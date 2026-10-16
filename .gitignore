@@ -22,3 +22,6 @@ backend/.env
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Local tool config (machine-specific paths)
+.claude/
