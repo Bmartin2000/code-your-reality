@@ -1,0 +1,24 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime data (database, uploads, frames)
+backend/data/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/*.tsbuildinfo
+frontend/node_modules/.tmp/
+
+# Secrets / local config
+.env
+backend/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db

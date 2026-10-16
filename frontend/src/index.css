@@ -1,0 +1,221 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #090b0c;
+  --color-ink-925: #0d1011;
+  --color-ink-900: #121617;
+  --color-ink-850: #161b1c;
+  --color-ink-800: #1a2020;
+  --color-ink-700: #232b2a;
+  --color-line: #2d3633;
+  --color-line-soft: #1f2725;
+  --color-fg: #f2f3ee;
+  --color-fg-muted: #9da8a3;
+  --color-fg-subtle: #7b8783;
+  --color-accent: #c5f477;
+  --color-accent-dim: #8fb354;
+  --color-success: #8de1b0;
+  --color-warning: #ffc777;
+  --color-error: #f18585;
+  --color-info: #9fc5e8;
+
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+  --text-display-xl: clamp(3rem, 8.4vw, 8.75rem);
+  --text-display-xl--line-height: 0.92;
+  --text-display-lg: clamp(2.5rem, 5.6vw, 5.5rem);
+  --text-display-lg--line-height: 0.98;
+  --text-display-md: clamp(2rem, 3.6vw, 3.5rem);
+  --text-display-md--line-height: 1.02;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html {
+    background: var(--color-ink-950);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    background: var(--color-ink-950);
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    color: var(--color-fg);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+  /* Scrollbars that belong to the material */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+}
+
+@layer components {
+  .display {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    font-variation-settings: "wght" 600;
+  }
+  .serif-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-micro);
+    line-height: 1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-fg-subtle);
+  }
+  .hairline {
+    border-color: var(--color-line);
+  }
+  /* Engineered surface: a faint top light, no glass, no glow. */
+  .surface {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--color-fg) 3%, transparent), transparent 40%),
+      var(--color-ink-900);
+    border: 1px solid var(--color-line-soft);
+  }
+  .surface-raised {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--color-fg) 4%, transparent), transparent 50%),
+      var(--color-ink-800);
+    border: 1px solid var(--color-line);
+  }
+  .grid-paper {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--color-line) 45%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--color-line) 45%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .field-input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--color-line);
+    background: var(--color-ink-925);
+    padding: 0.625rem 0.75rem;
+    color: var(--color-fg);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: border-color 160ms, background-color 160ms, box-shadow 160ms;
+  }
+  .field-input::placeholder {
+    color: var(--color-fg-subtle);
+  }
+  .field-input:hover {
+    border-color: color-mix(in oklab, var(--color-fg-subtle) 60%, var(--color-line));
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 18%, transparent);
+  }
+  .field-input[aria-invalid="true"] {
+    border-color: var(--color-error);
+  }
+  select.field-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239DA8A3' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+  }
+  input[type="date"].field-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.75);
+  }
+}
+
+@keyframes rc-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+@keyframes rc-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes rc-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+@keyframes rc-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.animate-dash {
+  animation: rc-dash 1.2s linear infinite;
+}
+.animate-soft-pulse {
+  animation: rc-pulse 1.8s ease-in-out infinite;
+}
+.animate-indeterminate {
+  animation: rc-indeterminate 1.6s var(--ease-out-quart) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-dash,
+  .animate-soft-pulse,
+  .animate-indeterminate {
+    animation: none;
+  }
+}
