@@ -1,4 +1,4 @@
-"""Reality Compiler API."""
+"""Code Your Reality API."""
 
 from __future__ import annotations
 
@@ -11,13 +11,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import apps, projects
+from .api import account, apps, projects
 from .config import get_settings
 from .db import init_db
 from .pipeline.media import ALLOWED_EXTENSIONS, ffmpeg_exe
 from .pipeline.model import OllamaProvider
 from .pipeline.transcribe import whisper_installed
 from .services.jobs import mark_interrupted_jobs
+from .services.plans import ensure_account
 from .workflow.runtime import RuntimeErrorBase
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -26,17 +27,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
+    ensure_account()
     mark_interrupted_jobs()
     yield
 
 
-app = FastAPI(title="Reality Compiler API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Code Your Reality API", version="1.0.0", lifespan=lifespan)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-App-Key"],
 )
 
 
@@ -83,3 +85,4 @@ def capabilities(refresh: bool = False) -> dict[str, Any]:
 
 app.include_router(projects.router)
 app.include_router(apps.router)
+app.include_router(account.router)

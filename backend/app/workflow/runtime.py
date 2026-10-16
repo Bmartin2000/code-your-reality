@@ -70,6 +70,7 @@ class AppRuntime:
         self.entities = {e["key"]: e for e in self.m["entities"]}
         self.rules = {r["id"]: r for r in self.m["rules"]}
         self.forms = {f["entity"]: f for f in self.m["forms"]}
+        self.emitted: list[dict[str, Any]] = []  # events produced by this request (for webhooks)
 
     # --- helpers --------------------------------------------------------------------------------
 
@@ -101,6 +102,7 @@ class AppRuntime:
         return f"{e['code_prefix']}-{rec.seq:04d}"
 
     def _log(self, rec: Record | None, entity: str, kind: str, summary: str, detail: dict[str, Any] | None = None) -> None:
+        self.emitted.append({"kind": kind, "entity": entity, "record_id": rec.id if rec else None, "summary": summary, "detail": detail})
         self.s.add(
             RecordEvent(
                 app_id=self.app.id,

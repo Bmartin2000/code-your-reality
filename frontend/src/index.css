@@ -1,33 +1,43 @@
-@import "@fontsource-variable/geist";
-@import "@fontsource/instrument-serif/400.css";
-@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
 @import "tailwindcss";
 
 @theme {
-  /* Light, Apple-inspired palette. Token names are role-based: ink-* are surfaces from page
-     background (950) to the strongest fill (700); fg-* is text. */
-  --color-ink-950: #f5f5f7;
-  --color-ink-925: #fbfbfd;
-  --color-ink-900: #ffffff;
-  --color-ink-850: #f2f2f5;
-  --color-ink-800: #ececf0;
-  --color-ink-700: #e3e3e8;
-  --color-line: #d2d2d7;
-  --color-line-soft: #e5e5ea;
-  --color-fg: #1d1d1f;
-  --color-fg-muted: #57575c;
-  --color-fg-subtle: #6e6e73;
-  --color-accent: #0071e3;
-  --color-accent-dim: #0058b0;
+  /* Integrint brand on white, Apple-like surfaces. ink-* = surfaces from page (950, white) to the
+     strongest fill (700); fg-* = text. brand-500 is for large fills only (2.8:1 on white);
+     accent (brand-700) is the text- and button-safe blue. */
+  --color-ink-950: #ffffff;
+  --color-ink-925: #fbfcfd;
+  --color-ink-900: #f4f6f8;
+  --color-ink-850: #edf1f4;
+  --color-ink-800: #e6ebef;
+  --color-ink-700: #d6dee3;
+  --color-line: #d6dee3;
+  --color-line-soft: #e6ebef;
+  --color-fg: #0b1b26;
+  --color-fg-muted: #2a3b47;
+  --color-fg-subtle: #5a6b77;
+  --color-brand-50: #e8f6ff;
+  --color-brand-100: #ccecff;
+  --color-brand-200: #99d8ff;
+  --color-brand: #00a1ff;
+  --color-brand-600: #0089db;
+  --color-accent: #0077be;
+  --color-accent-dim: #005c93;
   --color-on-accent: #ffffff;
-  --color-success: #1d8a3e;
-  --color-warning: #b25e00;
-  --color-error: #d70015;
-  --color-info: #0071e3;
+  --color-success: #0e7a50;
+  --color-warning: #8a5a00;
+  --color-error: #c42b1c;
+  --color-info: #0077be;
 
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Poppins", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
@@ -52,7 +62,7 @@
     background: var(--color-ink-950);
     color: var(--color-fg);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    font-feature-settings: "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -98,9 +108,15 @@
 
 @layer components {
   .display {
-    font-family: var(--font-sans);
-    font-weight: 650;
-    letter-spacing: -0.035em;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
   /* Emphasis inside headlines: same family, colour carries the accent (no decorative serif). */
   .serif-accent {
@@ -141,7 +157,7 @@
     width: 100%;
     border-radius: 10px;
     border: 1px solid var(--color-line);
-    background: var(--color-ink-900);
+    background: #ffffff;
     padding: 0.75rem 0.875rem;
     color: var(--color-fg);
     font-size: 1rem;

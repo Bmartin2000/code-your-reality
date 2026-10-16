@@ -6,12 +6,12 @@ Before recording: start the backend and frontend, and have one real analysis alr
 ---
 
 ### 1. The problem (0:00–0:10)
-**[Screen]** The landing page hero, "Show your work. Get your app."
+**[Screen]** The landing page hero, "Film how you work. Get your own app."
 *Narration:* "Small businesses run on paper slips, whiteboards and habits. Custom software means writing a specification first — so most never get any."
 
 ### 2. Record (0:10–0:22)
 **[Screen]** On a phone: Studio → **New app** → **Record with camera**. A short clip at a counter: picking an item, writing a slip, flipping a tag.
-*Narration:* "With Reality Compiler you don't describe your workflow. You show it — film the job once and say what matters."
+*Narration:* "With Code Your Reality you don't describe your workflow. You show it — film the job once and say what matters."
 
 ### 3. Local AI understands (0:22–0:38)
 **[Screen]** The progress screen ("Listening to what you said", "Looking at the video", "Understanding your process"). Then cut to the finished review.
@@ -31,7 +31,7 @@ Before recording: start the backend and frontend, and have one real analysis alr
 
 ### 7. Close (1:25–1:30)
 **[Screen]** The landing page pricing section, then the logo.
-*Narration:* "We didn't start with a specification. We started with reality. Reality Compiler."
+*Narration:* "We didn't start with a specification. We started with reality. Code Your Reality."
 
 ---
 

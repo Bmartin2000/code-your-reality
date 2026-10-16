@@ -35,6 +35,8 @@ function decide(defn) {
   return defn
 }
 
+const previousPlan = (await call('GET', '/account')).plan.id
+await call('POST', '/account/plan', { plan: 'free' })
 const project = await call('POST', '/projects/sample')
 await call('PUT', `/projects/${project.id}/workflow`, { definition: decide(project.workflow.definition), base_version: project.workflow.version })
 await call('POST', `/projects/${project.id}/workflow/approve`)
@@ -79,6 +81,19 @@ await desktop.getByRole('button', { name: /An unavailable item cannot be rented/
 await desktop.waitForTimeout(900)
 await shot(desktop, 'studio-advanced')
 
+await desktop.goto(`${WEB}/studio/upgrade?plan=plus`)
+await desktop.waitForTimeout(1000)
+await shot(desktop, 'studio-upgrade')
+
+// Plus features (the plan is restored at the end).
+await call('POST', '/account/plan', { plan: 'plus' })
+await desktop.goto(`${WEB}/apps/${slug}/reports`)
+await desktop.waitForTimeout(1500)
+await shot(desktop, 'app-reports')
+await desktop.goto(`${WEB}/apps/${slug}/connections`)
+await desktop.waitForTimeout(1200)
+await shot(desktop, 'app-connections')
+
 await desktop.goto(`${WEB}/apps/${slug}`)
 await desktop.waitForTimeout(1200)
 await shot(desktop, 'app-overview')
@@ -110,4 +125,5 @@ await mobile.waitForTimeout(1200)
 await shot(mobile, 'mobile-app')
 
 await browser.close()
+await call('POST', '/account/plan', { plan: previousPlan })
 console.log('sample project', project.id, 'app', slug)

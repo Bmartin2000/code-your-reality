@@ -1,13 +1,13 @@
-# Reality Compiler
+# Code Your Reality
 
-**From reality to runnable software.**
-*Don't describe your workflow. Show it.*
+**Film how you work. Get your own app.**
+*By Integrint. Don't describe your workflow. Show it.*
 
-Reality Compiler turns a recorded business process into a working application. A small business owner films how the work is done with a phone. **Google's open-weight Gemma 4 model, running locally through Ollama**, proposes the process structure: what is tracked, how things move along, and the business rules. Each finding is traced back to the second of the recording it came from. The owner keeps or drops each finding in plain language. The approved workflow then compiles into a schema-driven application that actually runs: records persist, and the server enforces the business rules on every operation. When the business changes, the owner records again or asks for a small change in one sentence.
+Code Your Reality turns a recorded business process into a working application. A small business owner films how the work is done with a phone. **Google's open-weight Gemma 4 model, running locally through Ollama**, proposes the process structure: what is tracked, how things move along, and the business rules. Each finding is traced back to the second of the recording it came from. The owner keeps or drops each finding in plain language. The approved workflow then compiles into a schema-driven application that actually runs: records persist, and the server enforces the business rules on every operation. When the business changes, the owner records again or asks for a small change in one sentence.
 
 **Customer journey:** see how it works → pick a plan (free pilot) → record with the phone camera → the AI analyzes it → review in plain language → the app is built → open it with a link or download it → record again or request small changes → support from Integrint.
 
-![Reality Compiler landing page: a recorded rental counter becomes structured rules and a running application](docs/screenshots/landing-hero.png)
+![Code Your Reality landing page: a recorded rental counter becomes structured rules and a running application](docs/screenshots/landing-hero.png)
 
 ## Screenshots
 
@@ -15,12 +15,12 @@ Reality Compiler turns a recorded business process into a working application. A
 | --- | --- |
 | ![Phone: record the process with the camera or upload a video](docs/screenshots/mobile-record.png) | ![Phone: the app is ready, with open, download, link, record again and small-change options](docs/screenshots/mobile-ready.png) |
 | **Record** on the phone: one big camera button that opens the native camera. | **Ready**: open the app, download it, share the link, record again, or ask for a small change. |
-| ![Plain-language review: what the app tracks, how things move, rules with the quote they came from](docs/screenshots/studio-review.png) | ![The app is ready](docs/screenshots/studio-ready.png) |
-| **Review in plain language**: keep or leave out each finding. AI guesses are flagged. | **Build**: one button compiles the confirmed workflow into a live app. |
-| ![Generated rental application dashboard with live availability and the activity log](docs/screenshots/app-overview.png) | ![The server refuses a second rental of an item that is already rented](docs/screenshots/app-rule-enforced.png) |
+| ![Plain-language review: what the app tracks, how things move, rules with the quote they came from](docs/screenshots/studio-review.png) | ![Upgrade with a demo checkout](docs/screenshots/studio-upgrade.png) |
+| **Review in plain language**: keep or leave out each finding. AI guesses are flagged. | **Upgrade to Plus**: a demo checkout (no payment is taken) switches the plan on. |
+| ![Reports: operations, mistakes prevented, activity per day, totals](docs/screenshots/app-reports.png) | ![Connections: tools mentioned in the video, spreadsheets, calendar feed, webhooks](docs/screenshots/app-connections.png) |
+| **Reports** (Plus): open and overdue items, totals, busiest items, and mistakes your rules prevented. | **Connections** (Plus): tools you mentioned in the video, a calendar feed, CSV export, and webhooks. |
+| ![Generated rental application dashboard](docs/screenshots/app-overview.png) | ![The server refuses a second rental of an item that is already rented](docs/screenshots/app-rule-enforced.png) |
 | **Operate**: the generated app, with records persisted on the server. | **Rules are enforced server-side**: renting an item twice is refused, and the reason names the rule. |
-| ![Advanced editor: evidence, workflow structure and the rule inspector, with the cited transcript segment highlighted](docs/screenshots/studio-advanced.png) | ![Generated app on a phone](docs/screenshots/mobile-app.png) |
-| **Advanced editor** (optional): evidence, process canvas and structured editors for power users. | **Generated apps are mobile-ready.** |
 
 Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` while both dev servers are running.
 
@@ -28,7 +28,7 @@ Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` 
 
 ## Why this is different
 
-| Typical "AI app builder" | Reality Compiler |
+| Typical "AI app builder" | Code Your Reality |
 | --- | --- |
 | Starts from a written prompt or spec | Starts from **evidence of real work**: video, speech, narration |
 | AI output is treated as the answer | AI output is a **proposal**. Every item is pending until a human confirms it |
@@ -43,6 +43,10 @@ Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` 
 - **Simple flow per app:** a friendly progress screen while the AI works → a plain-language review (keep or leave out each entity, field, button and rule, with the quote it came from) → **Build my app** → a ready screen with **Open my app**, **Download** (ZIP: definition, CSV and JSON data, history), the online link (copy and share), **Record again**, and **Ask for a small change**.
 - **Small change requests:** a sentence of up to 300 characters ("Customers should also give an email address") becomes at most five constrained edits (add, rename or remove a field, make it required, add an option, add or remove a rule). They come back for review as a new version. Large or unclear requests are refused, not guessed.
 - **Record again:** a new video creates a new workflow version. The live app keeps running until the update is confirmed, and its records are kept.
+- **Plans (Free demo → Plus → Business):** limits are enforced on the server: number of apps, video analyses per month, frames per analysis, and access to Reports, Connections and Team. The **Free demo** builds one app. **Plus** re-analyzes the *same* video more deeply (12 frames instead of 6) and unlocks the features below. Upgrading goes through a **demo checkout**: company name and billing email only, no card data, nothing charged. The UI says so everywhere.
+- **Reports (Plus):** operations, mistakes prevented by rules (and which rules), activity per day, open/closed and average time to complete, overdue items (detected from due/return date fields), totals and averages for money fields, breakdowns by status or choice, and the most frequent linked records. Every chart has a table view and hover details.
+- **Connections (Plus):** the tools you **mention in your video** are detected from the transcript and narration, with the quote and timestamp. Available now: CSV export per list (all plans), an **ICS calendar feed** of every date field (Google Calendar, Outlook, Apple Calendar), and **webhooks** signed with HMAC-SHA256 (Zapier, Make, own systems). Invoicing (Számlázz.hu / Billingo), email, SMS/WhatsApp and webshop sync are shown as *planned*.
+- **Team access with roles (Plus):** make an app private, then give each colleague a personal link with a role: owner, manager, staff or viewer. Every API call is checked against the role on the server, and the UI hides what a role can't do.
 - **Capture**: drag-and-drop upload with client and server validation (container magic bytes, size, duration), upload progress with cancel, preview, remove/replace, **browser recording** (camera or screen plus microphone) with permission and error handling, an optional written narration, a privacy notice, and transcript editing.
 - **Observe**: a real background job with persisted stages: media received → audio extraction → transcription → frame sampling → model interpretation (two passes) → structured validation. The UI shows exactly what the backend reports. There are no invented percentages or time estimates.
 - **Understand**: a three-panel workspace. Evidence (video or storyboard, frames, transcript) on the left, workflow structure (process canvas, entities, lifecycle, rules, actions, open questions) in the center, and a contextual **inspector** with structured editors on the right. Edits auto-save as new workflow versions.
@@ -202,17 +206,18 @@ Studio → Account → AI engine shows whether the configured model is installed
 ## Testing
 
 ```powershell
-cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 15 tests: rental cycle, rules, uploads, failure handling, normalization, change requests, export
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 18 tests: rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
 cd frontend; npm test                                          # 9 Vitest tests: schema helpers, workflow ops, SchemaForm
-cd frontend; npx playwright install chromium; npm run test:e2e # 16 Playwright tests: full guided journey + advanced editor + desktop/mobile smoke
+cd frontend; npx playwright install chromium; npm run test:e2e # 17 Playwright tests: guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.
 
 ## Limitations (honest)
 
-- **Plans and billing:** the monthly plans are shown, but online payment is not implemented in this build. Every plan starts as a free pilot, as the pricing page says.
+- **Billing:** plans and their limits are real, but payment is not connected. Upgrades use a clearly labelled demo checkout that charges nothing. Connecting Stripe or Barion is the next step.
+- **Single workspace, no login for the Studio:** the Studio is the owner's console (local, single-tenant). Team roles protect the generated apps through personal access keys, not user accounts.
 - **Online link:** the app link works for anyone who can reach the server. In this local build that means your own computer or network. Public hosting is a deployment step that isn't included here.
 
 - **Model quality depends on the model you run.** With small local models, extraction of entities and lifecycles is usually good, but rule mapping is less consistent (Gemma 4 E4B mapped 2 of 9 rules to enforceable kinds on our test clip). Rules that can't be mapped to an enforceable kind are kept as documented notes for you to fix in the inspector. Nothing is compiled without human review.

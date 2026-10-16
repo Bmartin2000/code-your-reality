@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import {
@@ -19,9 +19,9 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
-import { api, ApiError } from '../../lib/api'
+import { api, ApiError, setAppKey } from '../../lib/api'
 import { qk } from '../../lib/queries'
-import type { AppDetail, AppRecord, Effect, Manifest, ManifestEntity, RecordEvent } from '../../lib/types'
+import type { AppDetail, AppRecord, Effect, LockedApp, Manifest, ManifestEntity, RecordEvent } from '../../lib/types'
 import { BrandMark, EmptyState, ErrorState, LoadingState, ProvenanceBadge, TechnicalLabel } from '../../components/ui/primitives'
 import { Button, ButtonLink } from '../../components/ui/Button'
 import { ConfirmDialog, Dialog } from '../../components/ui/overlays'
@@ -31,6 +31,13 @@ import { toast } from '../../lib/toast'
 import { clockTime, formatValue, relativeTime } from '../../lib/format'
 import { cn } from '../../lib/cn'
 import type { ProvenanceSource } from '../../lib/workflow-schema'
+import { Reports } from '../../components/app/Reports'
+import { Connections } from '../../components/app/Connections'
+import { Team } from '../../components/app/Team'
+import { PlusGate } from '../../components/studio/PlusGate'
+import { BarChart3, KeyRound, Link2, Users } from 'lucide-react'
+
+const can = (app: AppDetail, permission: string) => app.viewer.permissions.includes(permission)
 
 // --- data helpers ---------------------------------------------------------------------------
 
@@ -192,7 +199,7 @@ function Overview({ slug, app }: { slug: string; app: AppDetail }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {stateful.map((e) => (
-            <Button key={e.key} variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(e)}>
+            can(app, 'create') && <Button key={e.key} variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(e)}>
               New {e.label.toLowerCase()}
             </Button>
           ))}
@@ -212,13 +219,13 @@ function Overview({ slug, app }: { slug: string; app: AppDetail }) {
               body={app.can_seed_sample ? 'Add the example inventory and customers to try a rental right away, or create your own records.' : 'Create the first records to start operating.'}
               action={
                 <div className="flex flex-wrap justify-center gap-2">
-                  {app.can_seed_sample && (
+                  {app.can_seed_sample && can(app, 'seed') && (
                     <Button variant="primary" loading={seed.isPending} onClick={() => seed.mutate()} icon={<FlaskConical className="size-4" />}>
                       Add sample records
                     </Button>
                   )}
                   {m.entities
-                    .filter((e) => !e.state)
+                    .filter((e) => !e.state && can(app, 'create'))
                     .map((e) => (
                       <Button key={e.key} onClick={() => setCreating(e)} icon={<Plus className="size-4" />}>
                         Add {e.label.toLowerCase()}
@@ -306,9 +313,9 @@ function Overview({ slug, app }: { slug: string; app: AppDetail }) {
       </div>
 
       <div className="flex justify-end">
-        <Button variant="quiet" size="sm" icon={<RefreshCcw className="size-3.5" />} onClick={() => setConfirmReset(true)}>
+        {can(app, 'reset') && <Button variant="quiet" size="sm" icon={<RefreshCcw className="size-3.5" />} onClick={() => setConfirmReset(true)}>
           Clear application data
-        </Button>
+        </Button>}
       </div>
 
       {creating && <CreateDialog slug={slug} app={app} entity={creating} open={!!creating} onClose={() => setCreating(null)} />}
@@ -373,7 +380,7 @@ function OpenWork({ slug, app, entity }: { slug: string; app: AppDetail; entity:
                     </span>
                   </Link>
                   <div className="flex shrink-0 gap-2">
-                    {r.transitions.map((t) => (
+                    {can(app, 'transition') && r.transitions.map((t) => (
                       <Button key={t.key} size="sm" onClick={() => setConfirm({ rec: r, key: t.key, label: t.label })} loading={transition.isPending && transition.variables?.id === r.id} icon={<Check className="size-3.5" />}>
                         {t.label}
                       </Button>
@@ -437,9 +444,9 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-subtle" />
             <input className="field-input w-full pl-8 sm:w-60" placeholder={`Search ${entity.plural_label.toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} aria-label={`Search ${entity.plural_label}`} />
           </label>
-          <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>
+          {can(app, 'create') && <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>
             New
-          </Button>
+          </Button>}
         </div>
       </div>
       <div className="mt-6">
@@ -452,7 +459,7 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
             icon={<Database className="size-5" />}
             title={q ? 'No matches' : `No ${entity.plural_label.toLowerCase()} yet`}
             body={q ? 'Try a different search.' : entity.description}
-            action={!q && <Button variant="primary" onClick={() => setCreating(true)} icon={<Plus className="size-4" />}>Create the first one</Button>}
+            action={!q && can(app, 'create') && <Button variant="primary" onClick={() => setCreating(true)} icon={<Plus className="size-4" />}>Create the first one</Button>}
           />
         ) : (
           <>
@@ -493,7 +500,7 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
                         ))}
                         {entity.state && (
                           <td className="px-4 py-2 text-right">
-                            {r.transitions.map((t) => (
+                            {can(app, 'transition') && r.transitions.map((t) => (
                               <Button
                                 key={t.key}
                                 size="sm"
@@ -589,12 +596,12 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
           <h1 className="display mt-2 truncate text-[clamp(1.7rem,3vw,2.4rem)] leading-[1.05]">{record.title}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          {record.transitions.map((t) => (
+          {can(app, 'transition') && record.transitions.map((t) => (
             <Button key={t.key} variant="primary" onClick={() => setConfirm(t)} icon={<Check className="size-4" />}>
               {t.label}
             </Button>
           ))}
-          {form.edit_fields.length > 0 && (
+          {form.edit_fields.length > 0 && can(app, 'update') && (
             <Button onClick={() => setEditing(true)} icon={<Pencil className="size-3.5" />}>
               Edit
             </Button>
@@ -675,11 +682,48 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
 
 // --- Shell ----------------------------------------------------------------------------------
 
+function LockedScreen({ app, onKey }: { app: LockedApp; onKey: (key: string) => void }) {
+  const [value, setValue] = useState('')
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const m = value.match(/[?&]key=([a-f0-9]+)/i)
+    onKey((m ? m[1] : value).trim())
+  }
+  return (
+    <main id="main" className="flex min-h-dvh items-center justify-center bg-ink-900 p-6">
+      <form onSubmit={submit} className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-[0_20px_60px_-30px_rgba(11,27,38,0.3)]">
+        <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-accent">
+          <KeyRound className="size-7" />
+        </span>
+        <h1 className="mt-5 text-[24px] font-semibold">{app.name}</h1>
+        <p className="mt-2 text-[15px] text-fg-muted">This app is private. Open it with the personal link you received, or paste the link here.</p>
+        <input className="field-input mt-6" placeholder="Paste your personal link" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Personal link" />
+        <Button type="submit" variant="primary" className="mt-3 w-full" disabled={!value.trim()}>
+          Open app
+        </Button>
+      </form>
+    </main>
+  )
+}
+
 export default function GeneratedAppPage() {
   const { slug = '' } = useParams()
-  const app = useQuery({ queryKey: qk.app(slug), queryFn: () => api.app(slug) })
+  const [params, setParams] = useSearchParams()
+  const qc = useQueryClient()
+  const linkKey = params.get('key')
+  useEffect(() => {
+    // Personal links carry ?key=…; remember it for this app on this device and tidy the URL.
+    if (linkKey) {
+      setAppKey(slug, linkKey)
+      params.delete('key')
+      setParams(params, { replace: true })
+      qc.invalidateQueries({ queryKey: qk.app(slug) })
+      qc.invalidateQueries({ queryKey: qk.appData(slug) })
+    }
+  }, [linkKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const app = useQuery({ queryKey: qk.app(slug), queryFn: () => api.app(slug), enabled: !linkKey })
 
-  if (app.isLoading) return <LoadingState className="min-h-dvh" label="Starting application" />
+  if (app.isLoading || linkKey) return <LoadingState className="min-h-dvh" label="Starting application" />
   if (app.isError)
     return (
       <main id="main" className="flex min-h-dvh items-center justify-center p-6">
@@ -693,46 +737,73 @@ export default function GeneratedAppPage() {
         </div>
       </main>
     )
-  const a = app.data!
-  const nav = a.manifest.views
+  if (app.data!.locked)
+    return (
+      <LockedScreen
+        app={app.data as LockedApp}
+        onKey={(key) => {
+          setAppKey(slug, key)
+          qc.invalidateQueries({ queryKey: qk.app(slug) })
+        }}
+      />
+    )
+  const a = app.data as AppDetail
+  const extra = [
+    { key: 'reports', label: 'Reports', icon: BarChart3, show: can(a, 'reports'), plus: !a.features.reports },
+    { key: 'connections', label: 'Connections', icon: Link2, show: can(a, 'admin'), plus: !a.features.integrations },
+    { key: 'team', label: 'Team', icon: Users, show: can(a, 'admin'), plus: !a.features.team },
+  ].filter((x) => x.show)
+  const nav = [
+    ...a.manifest.views.map((v) => ({ key: v.key, label: v.label, to: v.entity ? `/apps/${slug}/${v.entity}` : `/apps/${slug}`, end: !v.entity, icon: v.entity ? Database : LayoutDashboard, plus: false })),
+    ...extra.map((x) => ({ key: x.key, label: x.label, to: `/apps/${slug}/${x.key}`, end: true, icon: x.icon, plus: x.plus })),
+  ]
+  const roleLabel = { owner: 'Owner', manager: 'Manager', staff: 'Staff', viewer: 'Viewer' }[a.viewer.role]
 
   return (
     <div className="min-h-dvh bg-ink-950">
-      <header className="sticky top-0 z-30 border-b border-line-soft bg-ink-950/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line-soft bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent font-mono text-[12px] font-semibold text-on-accent">{a.name.slice(0, 1)}</span>
-            <span className="truncate text-[14px] font-semibold tracking-[-0.01em]">{a.name}</span>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#00A1FF] to-[#0077BE] font-[Poppins] text-[13px] font-semibold text-white">{a.name.slice(0, 1)}</span>
+            <span className="truncate text-[15px] font-semibold">{a.name}</span>
             {a.is_sample && (
-              <span className="hidden items-center gap-1 rounded-full border border-warning/30 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-warning sm:inline-flex">
-                <FlaskConical className="size-3" /> Sample workflow
+              <span className="hidden items-center gap-1 rounded-full bg-[#FBF1DC] px-2 py-0.5 text-[11px] font-medium text-warning sm:inline-flex">
+                <FlaskConical className="size-3" /> Example
               </span>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <TechnicalLabel className="hidden lg:block">Compiled by</TechnicalLabel>
-            <Link to={`/studio/projects/${a.project_id}`} className="flex items-center gap-2 rounded-full border border-line-soft px-2.5 py-1 text-[12px] text-fg-muted hover:border-line hover:text-fg" title="Open the source workflow in the Studio">
-              <BrandMark withWord={false} className="[&_svg]:size-4" />
-              <span className="hidden sm:inline">Source workflow v{a.workflow_version}</span>
-            </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            {a.access_mode === 'team' && (
+              <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[12px] font-medium text-accent" title="Your role in this app">
+                {a.viewer.name ? `${a.viewer.name} · ` : ''}
+                {roleLabel}
+              </span>
+            )}
+            {can(a, 'admin') && (
+              <Link to={`/studio/projects/${a.project_id}`} className="flex items-center gap-2 rounded-full border border-line-soft px-2.5 py-1 text-[12px] text-fg-muted hover:border-line hover:text-fg" title="Open the source workflow in Code Your Reality">
+                <BrandMark withWord={false} className="[&_svg]:size-4" />
+                <span className="hidden sm:inline">Source v{a.workflow_version}</span>
+              </Link>
+            )}
           </div>
         </div>
         <nav className="mx-auto flex max-w-[1440px] gap-1 overflow-x-auto px-4 pb-2 sm:px-6 lg:hidden" aria-label="Application sections">
           {nav.map((v) => (
-            <NavLink key={v.key} to={v.entity ? `/apps/${slug}/${v.entity}` : `/apps/${slug}`} end className={({ isActive }) => cn('h-8 shrink-0 rounded-full px-3 text-[13px] leading-8', isActive ? 'bg-ink-800 text-fg' : 'text-fg-muted')}>
+            <NavLink key={v.key} to={v.to} end={v.end} className={({ isActive }) => cn('h-9 shrink-0 rounded-full px-3.5 text-[14px] leading-9', isActive ? 'bg-fg text-white' : 'text-fg-muted')}>
               {v.label}
             </NavLink>
           ))}
         </nav>
       </header>
-      <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[200px_1fr] lg:px-8 lg:py-10">
+      <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[210px_1fr] lg:px-8 lg:py-10">
         <nav className="hidden lg:block" aria-label="Application sections">
           <ul className="sticky top-24 space-y-0.5">
             {nav.map((v) => (
               <li key={v.key}>
-                <NavLink to={v.entity ? `/apps/${slug}/${v.entity}` : `/apps/${slug}`} end={!v.entity} className={({ isActive }) => cn('flex h-9 items-center gap-2.5 rounded-lg px-3 text-[13.5px] transition-colors', isActive ? 'bg-ink-800 text-fg' : 'text-fg-muted hover:bg-ink-900 hover:text-fg')}>
-                  {v.entity ? <Database className="size-3.5 text-fg-subtle" /> : <LayoutDashboard className="size-3.5 text-fg-subtle" />}
+                <NavLink to={v.to} end={v.end} className={({ isActive }) => cn('flex h-10 items-center gap-2.5 rounded-xl px-3 text-[14px] transition-colors', isActive ? 'bg-brand-50 font-medium text-accent' : 'text-fg-muted hover:bg-ink-900 hover:text-fg')}>
+                  <v.icon className="size-4" />
                   {v.label}
+                  {v.plus && <span className="ml-auto rounded-full bg-fg px-1.5 py-0.5 text-[10px] font-semibold text-white">Plus</span>}
                 </NavLink>
               </li>
             ))}
@@ -741,11 +812,26 @@ export default function GeneratedAppPage() {
         <main id="main" className="min-w-0">
           <Routes>
             <Route index element={<Overview slug={slug} app={a} />} />
+            <Route path="reports" element={a.features.reports ? <Reports slug={slug} /> : <ReportsGate />} />
+            <Route path="connections" element={<Connections slug={slug} />} />
+            <Route path="team" element={<Team slug={slug} />} />
             <Route path=":entity" element={<EntityList slug={slug} app={a} />} />
             <Route path=":entity/:id" element={<RecordDetail slug={slug} app={a} />} />
           </Routes>
         </main>
       </div>
+    </div>
+  )
+}
+
+function ReportsGate() {
+  return (
+    <div>
+      <h1 className="display mb-6 text-[clamp(1.8rem,3vw,2.4rem)] leading-[1.08]">Reports</h1>
+      <PlusGate
+        title="See how your business is doing"
+        body="Plus adds reports calculated from your records: what’s open and overdue, totals like deposits, your busiest items, and how many mistakes your rules prevented."
+      />
     </div>
   )
 }

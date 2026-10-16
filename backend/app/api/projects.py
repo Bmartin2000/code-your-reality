@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import AuditEvent, GeneratedApp, Job, MediaAsset, Project, WorkflowVersion, get_session, utcnow
 from ..pipeline.media import ALLOWED_EXTENSIONS, safe_extension, sniff_container
-from ..services import jobs
+from ..services import access, jobs, plans
 from ..services.audit import record_audit, review_diff
 from ..workflow.sample import SAMPLE_SCENES, SAMPLE_TRANSCRIPT, SAMPLE_NARRATION_TITLE, blank_definition, rental_definition
 from ..workflow.schema import WorkflowDefinition
@@ -115,10 +115,16 @@ def _project_detail(s: Session, p: Project) -> dict[str, Any]:
             "analysis_job": _job_dict(latest_job["analysis"]),
             "compile_job": _job_dict(latest_job["compile"]),
             "change_job": _job_dict(latest_job["change"]),
+            "app_owner_key": _owner_key(s, p.id),
             "sample_source": {"title": SAMPLE_NARRATION_TITLE, "transcript": SAMPLE_TRANSCRIPT, "scenes": SAMPLE_SCENES, "duration": 60} if p.origin == "sample" else None,
         }
     )
     return out
+
+
+def _owner_key(s: Session, project_id: str) -> str | None:
+    app = s.scalars(select(GeneratedApp).where(GeneratedApp.project_id == project_id)).first()
+    return access.owner_key(s, app) if app else None
 
 
 def _get_project(s: Session, project_id: str) -> Project:
@@ -357,6 +363,7 @@ def analyze(project_id: str, s: Session = Depends(get_session)) -> dict[str, Any
         raise HTTPException(409, "A job is already running for this project.")
     if not p.media and not p.narration.strip():
         raise HTTPException(400, "Upload a recording or write a narration first.")
+    plans.check_analysis(s)
     job_id = jobs.start_analysis(p.id)
     return _job_dict(s.get(Job, job_id))
 
@@ -446,6 +453,7 @@ def compile_project(project_id: str, s: Session = Depends(get_session)) -> dict[
     wv = _latest_workflow(s, p.id)
     if not wv or not wv.approved_at:
         raise HTTPException(400, "Approve the latest workflow version before compiling.")
+    plans.check_new_app(s, p)
     if p.status in ("analyzing", "compiling"):
         raise HTTPException(409, "A job is already running for this project.")
     job_id = jobs.start_compile(p.id, wv.id)

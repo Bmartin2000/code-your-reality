@@ -11,6 +11,7 @@ const Projects = lazy(() => import('./pages/studio/Projects'))
 const NewCompilation = lazy(() => import('./pages/studio/NewCompilation'))
 const RecentApps = lazy(() => import('./pages/studio/RecentApps'))
 const Settings = lazy(() => import('./pages/studio/Settings'))
+const Upgrade = lazy(() => import('./pages/studio/Upgrade'))
 const ProjectLayout = lazy(() => import('./pages/studio/project/ProjectLayout'))
 const ProjectHome = lazy(() => import('./pages/studio/project/ProjectHome'))
 const ProjectFlow = lazy(() => import('./pages/studio/project/ProjectFlow'))
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="new" element={<NewCompilation />} />
             <Route path="apps" element={<RecentApps />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="upgrade" element={<Upgrade />} />
             <Route path="projects/:id" element={<ProjectLayout />}>
               <Route index element={<ProjectFlow />} />
               <Route path="record" element={<RecordAgain />} />

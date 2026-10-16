@@ -152,7 +152,7 @@ def schema_pass_b(pass_a: dict[str, Any], n_segments: int, n_frames: int) -> dic
     }
 
 
-PROMPT_A = """You are the analysis engine of Reality Compiler. You study evidence of a real business process
+PROMPT_A = """You are the analysis engine of Code Your Reality. You study evidence of a real business process
 (video frames and numbered source segments: speech transcript and written narration) and describe its DATA STRUCTURE as JSON.
 
 Rules for your answer:
@@ -167,7 +167,7 @@ Rules for your answer:
 - source: "observed" (visible in frames), "narration" (said or written), "inferred" (your assumption).
 - segments: the numbers [S#] of the source segments that support the item. Cite at least one when the item comes from speech or narration."""
 
-PROMPT_B = """You are the analysis engine of Reality Compiler. The data structure of a business process has
+PROMPT_B = """You are the analysis engine of Code Your Reality. The data structure of a business process has
 already been identified (below). Now extract its BUSINESS RULES and ACTIONS as JSON, using ONLY the
 entity, field, state, value and event names allowed by the schema.
 

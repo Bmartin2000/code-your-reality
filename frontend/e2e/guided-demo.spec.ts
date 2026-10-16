@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 
 test('guided sample: review, build, operate a rental cycle, download', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Show your work.')
-  await page.getByRole('link', { name: 'Try the demo' }).first().click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Film how you work.')
+  await page.getByRole('link', { name: 'See a ready example' }).first().click()
 
   // Simple review: the example is labelled, the AI-guessed rule is left out.
   await expect(page.getByRole('heading', { name: 'Here’s what we understood.' })).toBeVisible()
@@ -65,4 +65,57 @@ test('advanced editor is still reachable', async ({ page }) => {
   await page.getByRole('link', { name: 'Open the advanced editor' }).click()
   await expect(page.getByText('Illustrated storyboard · sample')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Simple view' })).toBeVisible()
+})
+
+test('upgrade to Plus: reports, connections and a private team app', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto('/demo')
+  await page.getByRole('button', { name: 'Build my app' }).click()
+  await expect(page.getByRole('heading', { name: 'Your app is ready.' })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Like it? Make it your team’s system.')).toBeVisible()
+  await page.getByRole('link', { name: 'Open my app' }).click()
+  await page.getByRole('button', { name: 'Add sample records' }).click()
+  await page.getByRole('link', { name: /Reports/ }).first().click()
+  await expect(page.getByText('See how your business is doing')).toBeVisible()
+  const reportsUrl = page.url()
+
+  // Demo checkout: no card data, nothing charged.
+  await page.getByRole('link', { name: /Upgrade to Plus/ }).first().click()
+  await expect(page.getByText('Demo checkout.', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: 'Activate Plus' }).click()
+  await expect(page.getByText('Enter your company name.')).toBeVisible()
+  await page.getByLabel('Company name').fill('Rent & Go Kft.')
+  await page.getByLabel('Billing email').fill('owner@example.com')
+  await page.getByRole('button', { name: 'Activate Plus' }).click()
+  await expect(page.getByRole('heading', { name: 'Plus is active.' })).toBeVisible()
+
+  // Reports now work.
+  await page.goto(reportsUrl)
+  await expect(page.getByText('Mistakes prevented')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
+
+  // Connections: calendar feed offered.
+  await page.getByRole('link', { name: /Connections/ }).first().click()
+  await expect(page.getByText('Calendar (Google, Outlook, Apple)')).toBeVisible()
+
+  // Team: make the app private and add a viewer.
+  await page.getByRole('link', { name: /Team/ }).first().click()
+  await page.getByRole('button', { name: 'Make private and add people' }).click()
+  await expect(page.getByText('Owner · Everything')).toBeVisible()
+  await page.getByLabel('Name').fill('Béla')
+  await page.getByLabel('Role').selectOption('viewer')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByText('Viewer · Look only')).toBeVisible()
+  const link = await page.evaluate(() => navigator.clipboard.readText())
+  expect(link).toContain('?key=')
+
+  // A fresh browser without the key sees the sign-in screen; the viewer link opens read-only.
+  const other = await context.browser()!.newContext()
+  const guest = await other.newPage()
+  await guest.goto(page.url().replace(/\/team$/, ''))
+  await expect(guest.getByText('This app is private.')).toBeVisible()
+  await guest.goto(link)
+  await expect(guest.getByText('Béla · Viewer')).toBeVisible()
+  await expect(guest.getByRole('button', { name: 'New rental' })).toHaveCount(0)
+  await other.close()
 })

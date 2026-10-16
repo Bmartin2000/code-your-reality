@@ -109,6 +109,7 @@ export interface ProjectDetail extends ProjectSummary {
   analysis_job: Job | null
   compile_job: Job | null
   change_job: Job | null
+  app_owner_key: string | null
   sample_source: SampleSource | null
 }
 
@@ -202,6 +203,17 @@ export interface AppSummary {
 export interface AppDetail extends AppSummary {
   manifest: Manifest
   can_seed_sample: boolean
+  access_mode: 'open' | 'team'
+  locked: false
+  viewer: AppViewer
+  features: { reports: boolean; integrations: boolean; team: boolean; plan: string }
+}
+
+export interface LockedApp {
+  slug: string
+  name: string
+  access_mode: 'team'
+  locked: true
 }
 
 export interface AppRecord {
@@ -243,4 +255,94 @@ export interface Capabilities {
   transcription: { engine: string; installed: boolean; enabled: boolean; model: string }
   model: { reachable: boolean; url: string; model: string; installed: boolean; vision: boolean; error: string | null }
   limits: { max_upload_mb: number; max_video_seconds: number; formats: string[]; frame_samples: number }
+}
+
+// --- Account / plans ----------------------------------------------------------------------------
+
+export interface PlanLimits {
+  id: 'free' | 'plus' | 'business'
+  name: string
+  price_eur: number | null
+  apps: number
+  members: number
+  analyses_per_month: number
+  frame_samples: number
+  reports: boolean
+  integrations: boolean
+  team: boolean
+}
+
+export interface AccountSummary {
+  plan: PlanLimits
+  company: string
+  billing_email: string
+  plan_started_at: string | null
+  usage: { apps: number; analyses_this_month: number }
+  plans: PlanLimits[]
+  billing_live: boolean
+}
+
+export interface AppViewer {
+  role: 'owner' | 'manager' | 'staff' | 'viewer'
+  name: string | null
+  permissions: string[]
+}
+
+export interface ReportSeriesPoint {
+  date: string
+  count: number
+}
+
+export interface EntityReport {
+  key: string
+  label: string
+  plural_label: string
+  total: number
+  created_last_30_days: number
+  per_day: ReportSeriesPoint[]
+  numeric: { field: string; label: string; type: string; sum: number; avg: number; min: number; max: number; count: number }[]
+  breakdowns: { field: string; label: string; values: { value: string; label: string; count: number }[] }[]
+  top_references: { field: string; label: string; target: string; top: { id: string; title: string; count: number }[] }[]
+  lifecycle: { open: number; closed: number; avg_hours_to_close: number | null; due_field: string | null; overdue: { id: string; title: string; due: string }[]; overdue_count: number } | null
+}
+
+export interface AppReports {
+  generated_at: string
+  entities: EntityReport[]
+  activity: ReportSeriesPoint[]
+  operations: number
+  rejections: number
+  rules_that_stopped_mistakes: { statement: string; count: number }[]
+}
+
+export interface IntegrationTool {
+  id: string
+  name: string
+  status: 'available' | 'planned'
+  via: string
+  mentioned: boolean
+  evidence: { quote: string; start: number | null; kind: string } | null
+}
+
+export interface AppIntegrations {
+  unlocked: boolean
+  tools: IntegrationTool[]
+  calendar_path: string | null
+  csv: { entity: string; label: string; path: string }[]
+  webhooks: { id: string; url: string; secret: string; active: boolean; last_status: string | null; last_sent_at: string | null }[]
+}
+
+export interface AppMember {
+  id: string
+  name: string
+  role: 'owner' | 'manager' | 'staff' | 'viewer'
+  key: string
+  created_at: string
+}
+
+export interface AppTeam {
+  access_mode: 'open' | 'team'
+  unlocked: boolean
+  seats: number
+  members: AppMember[]
 }

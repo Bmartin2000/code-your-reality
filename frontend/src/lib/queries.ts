@@ -15,6 +15,7 @@ export const qk = {
   stats: (slug: string) => ['app-data', slug, 'stats'] as const,
   events: (slug: string) => ['app-data', slug, 'events'] as const,
   capabilities: ['capabilities'] as const,
+  account: ['account'] as const,
 }
 
 const ACTIVE = new Set(['analyzing', 'compiling'])
@@ -64,4 +65,8 @@ export function useCapabilities() {
 export function setProjectCache(qc: ReturnType<typeof useQueryClient>, p: ProjectDetail) {
   qc.setQueryData(qk.project(p.id), p)
   qc.invalidateQueries({ queryKey: qk.projects })
+}
+
+export function useAccount() {
+  return useQuery({ queryKey: qk.account, queryFn: api.account, staleTime: 10_000 })
 }

@@ -8,7 +8,6 @@ import { api, ApiError } from '../../lib/api'
 import { setProjectCache, useCapabilities } from '../../lib/queries'
 import { toast } from '../../lib/toast'
 import { cn } from '../../lib/cn'
-import { rememberPlan } from '../../lib/plans'
 
 function ManualStart() {
   const [name, setName] = useState('Equipment rental desk')
@@ -63,7 +62,6 @@ function ManualStart() {
 export default function NewCompilation() {
   const [params] = useSearchParams()
   const manual = params.get('mode') === 'manual'
-  rememberPlan(params.get('plan'))
   const caps = useCapabilities()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -94,7 +92,7 @@ export default function NewCompilation() {
       setBusy(false)
       setProgress(null)
       if (projectId && (err.status === -1 || err.status === 413 || err.status === 415)) api.deleteProject(projectId).catch(() => undefined)
-      if (err.status !== -1) setError(err.message)
+      if (err.status !== -1) setError(err.body?.upgrade ? `${err.message} See Account → Upgrade.` : err.message)
     }
   }
 

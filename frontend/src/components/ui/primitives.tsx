@@ -37,15 +37,21 @@ export function SectionHeading({ eyebrow, title, description, actions, className
 export function BrandMark({ className, withWord = true }: { className?: string; withWord?: boolean }) {
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
-      <svg viewBox="0 0 32 32" className="size-7 shrink-0" aria-hidden>
-        <rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="#FFFFFF" stroke="#D2D2D7" />
-        <path d="M8.5 9h6.5a5 5 0 0 1 0 10H8.5z" fill="none" stroke="#1D1D1F" strokeWidth="2" />
-        <path d="M15 19l6 5" stroke="#1D1D1F" strokeWidth="2" strokeLinecap="round" />
-        <rect x="19.5" y="8" width="4.5" height="4.5" rx="1" fill="#0071E3" />
+      <svg viewBox="0 0 64 64" className="size-8 shrink-0" aria-hidden>
+        <defs>
+          <linearGradient id="cyr-mark" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#00A1FF" />
+            <stop offset="1" stopColor="#0077BE" />
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="16" fill="url(#cyr-mark)" />
+        <text x="32" y="40.5" textAnchor="middle" fontFamily="Poppins, Inter, sans-serif" fontWeight="700" fontSize="22" letterSpacing="-0.5" fill="#FFFFFF">
+          CYR
+        </text>
       </svg>
       {withWord && (
-        <span className="text-[15px] font-semibold tracking-[-0.02em] text-fg">
-          Reality<span className="text-fg-muted"> Compiler</span>
+        <span className="font-[Poppins] text-[16px] font-semibold tracking-[-0.01em] text-fg">
+          Code Your <span className="text-accent">Reality</span>
         </span>
       )}
     </span>
@@ -81,10 +87,10 @@ export function StatusIndicator({ status, className }: { status: ProjectStatus; 
 // --- Provenance -----------------------------------------------------------------------------
 
 export const PROVENANCE_META: Record<ProvenanceSource, { label: string; short: string; icon: typeof Eye; color: string }> = {
-  observed: { label: 'Directly observed', short: 'Observed', icon: Eye, color: '#0071E3' },
-  narration: { label: 'From narration', short: 'Narration', icon: Mic, color: '#7D4CDB' },
-  inferred: { label: 'AI inference', short: 'Inferred', icon: Sparkles, color: '#B25E00' },
-  human: { label: 'Human authored', short: 'Human', icon: UserCheck, color: '#1D8A3E' },
+  observed: { label: 'Directly observed', short: 'Observed', icon: Eye, color: '#0077BE' },
+  narration: { label: 'From narration', short: 'Narration', icon: Mic, color: '#6B4FD8' },
+  inferred: { label: 'AI inference', short: 'Inferred', icon: Sparkles, color: '#8A5A00' },
+  human: { label: 'Human authored', short: 'Human', icon: UserCheck, color: '#0E7A50' },
 }
 
 export function ProvenanceBadge({ source, compact, className }: { source: ProvenanceSource; compact?: boolean; className?: string }) {

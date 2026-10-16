@@ -12,7 +12,7 @@ import { TechnicalLabel } from '../../../components/ui/primitives'
 import { api } from '../../../lib/api'
 import { qk, useJob } from '../../../lib/queries'
 import { toast } from '../../../lib/toast'
-import type { Issue, Manifest } from '../../../lib/types'
+import type { AppDetail, Issue, Manifest } from '../../../lib/types'
 import { cn } from '../../../lib/cn'
 
 const ASSEMBLY = [
@@ -90,7 +90,7 @@ export default function Compile() {
   const [starting, setStarting] = useState(false)
   const job = useJob(jobId).data ?? (jobId === project.compile_job?.id ? project.compile_job : null)
   const slug = (job?.result?.slug as string | undefined) ?? project.app_slug
-  const app = useQuery({ queryKey: qk.app(slug ?? ''), queryFn: () => api.app(slug!), enabled: !!slug && job?.status === 'succeeded' })
+  const app = useQuery({ queryKey: qk.app(slug ?? ''), queryFn: () => api.app(slug!) as Promise<AppDetail>, enabled: !!slug && job?.status === 'succeeded' })
 
   const finished = job ? job.stages.filter((s) => s.status === 'done' || s.status === 'failed').length : 0
 
@@ -161,7 +161,7 @@ export default function Compile() {
             )}
           </h2>
           <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-fg-muted">
-            The compiler turns workflow v{project.workflow.version} into data models, forms, views and a guarded state machine. No code is generated — the manifest runs on Reality Compiler's predefined runtime.
+            The compiler turns workflow v{project.workflow.version} into data models, forms, views and a guarded state machine. No code is generated — the manifest runs on Code Your Reality's predefined runtime.
           </p>
           <CompilerCore layers={layers} className="mt-8 max-w-[560px]" label="Compilation progress" />
           <div className="mt-8 flex flex-wrap gap-2">

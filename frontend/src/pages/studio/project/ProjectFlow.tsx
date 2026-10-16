@@ -5,8 +5,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import { AlertCircle, ArrowRight, Check, CheckCircle2, Copy, Download, ExternalLink, LayoutTemplate, MessageSquareText, Quote, RefreshCw, Share2, Sparkles, X } from 'lucide-react'
 import { useProjectContext } from './ProjectLayout'
 import { Button, ButtonLink, Spinner } from '../../../components/ui/Button'
-import { api, ApiError } from '../../../lib/api'
-import { qk, setProjectCache, useJob } from '../../../lib/queries'
+import { api, ApiError, setAppKey } from '../../../lib/api'
+import { qk, setProjectCache, useAccount, useJob } from '../../../lib/queries'
 import { toast } from '../../../lib/toast'
 import type { Job, ProjectDetail } from '../../../lib/types'
 import { FIELD_TYPE_LABELS, forEachReviewable, type WorkflowDefinition } from '../../../lib/workflow-schema'
@@ -137,7 +137,7 @@ function Review({ project }: { project: ProjectDetail }) {
       const err = e as ApiError
       setPhase('idle')
       const first = err.body?.issues?.[0]?.message
-      setProblem(first ? `${err.message} ${first}` : err.message)
+      setProblem(err.body?.upgrade ? `${err.message} Upgrade in Account to build more apps.` : first ? `${err.message} ${first}` : err.message)
       qc.invalidateQueries({ queryKey: qk.project(project.id) })
     }
   }
@@ -344,9 +344,61 @@ function ChangeBox({ project }: { project: ProjectDetail }) {
   )
 }
 
+function PlusCard({ project }: { project: ProjectDetail }) {
+  const account = useAccount()
+  const qc = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const plan = account.data?.plan
+  if (!plan) return null
+  if (plan.id === 'free')
+    return (
+      <section className="rounded-3xl bg-gradient-to-br from-[#E8F6FF] to-[#CCECFF] p-5 sm:p-6">
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-fg px-3 py-1 text-[12px] font-semibold text-white">
+          <Sparkles className="size-3.5" /> Plus
+        </p>
+        <h3 className="mt-3 text-[19px] font-semibold">Like it? Make it your team’s system.</h3>
+        <ul className="mt-2 space-y-1 text-[15px] text-fg-muted">
+          <li>· Deeper analysis of the same video (2× more frames)</li>
+          <li>· Reports, team access with roles, calendar and webhooks</li>
+          <li>· Up to 5 apps for your business</li>
+        </ul>
+        <ButtonLink to="/studio/upgrade?plan=plus" variant="primary" className="mt-4">
+          Upgrade to Plus — €19 / month
+        </ButtonLink>
+      </section>
+    )
+  if (!project.media || project.origin === 'sample') return null
+  const reanalyze = async () => {
+    setBusy(true)
+    try {
+      await api.analyze(project.id)
+      qc.invalidateQueries({ queryKey: qk.project(project.id) })
+    } catch (e) {
+      toast.error('Could not start the analysis', (e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section className="rounded-3xl bg-ink-900 p-5 sm:p-6">
+      <h3 className="flex items-center gap-2 text-[17px] font-semibold">
+        <Sparkles className="size-5 text-accent" /> {plan.name}: deeper analysis
+      </h3>
+      <p className="mt-1 text-[15px] text-fg-muted">Re-use the video you already recorded. The AI now studies {plan.frame_samples} frames instead of 6. You’ll review the result before your app changes.</p>
+      <Button variant="secondary" className="mt-4" loading={busy} onClick={reanalyze} icon={<RefreshCw className="size-4" />}>
+        Re-analyze my video
+      </Button>
+    </section>
+  )
+}
+
 function Ready({ project }: { project: ProjectDetail }) {
   const navigate = useNavigate()
   const slug = project.app_slug!
+  useEffect(() => {
+    // The Studio is the owner's console: remember the owner key so a private app opens directly.
+    if (project.app_owner_key) setAppKey(slug, project.app_owner_key)
+  }, [slug, project.app_owner_key])
   const url = `${window.location.origin}/apps/${slug}`
   const copy = async () => {
     try {
@@ -398,6 +450,8 @@ function Ready({ project }: { project: ProjectDetail }) {
         </div>
         <p className="mt-2 text-[13px] text-fg-subtle">Anyone who can reach this server can use the app. In this preview it runs on your own computer.</p>
       </section>
+
+      <PlusCard project={project} />
 
       <section className="rounded-3xl bg-ink-900 p-5 sm:p-6">
         <h3 className="text-[17px] font-semibold">Something changed?</h3>

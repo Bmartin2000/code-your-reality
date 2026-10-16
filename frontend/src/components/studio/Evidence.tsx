@@ -67,8 +67,8 @@ export function FrameStrip({ media }: { media: MediaAsset }) {
 
 // --- Sample storyboard -------------------------------------------------------------------------
 
-const STROKE = '#6E6E73'
-const ACCENT = '#0071E3'
+const STROKE = '#5A6B77'
+const ACCENT = '#0077BE'
 
 function Bracket({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
   const c = 10
@@ -82,7 +82,7 @@ function Bracket({ x, y, w, h }: { x: number; y: number; w: number; h: number })
 function Tag({ x, y, label, on }: { x: number; y: number; label: string; on?: boolean }) {
   return (
     <g>
-      <rect x={x} y={y} width="78" height="20" rx="3" fill={on ? '#E8F2FD' : '#FFFFFF'} stroke={on ? ACCENT : '#D2D2D7'} />
+      <rect x={x} y={y} width="78" height="20" rx="3" fill={on ? '#E8F6FF' : '#FFFFFF'} stroke={on ? ACCENT : '#D6DEE3'} />
       <text x={x + 39} y={y + 13.5} textAnchor="middle" fontFamily="IBM Plex Mono" fontSize="9" letterSpacing="1" fill={on ? ACCENT : STROKE}>
         {label}
       </text>
@@ -159,7 +159,7 @@ function Scene({ scene }: { scene: SampleScene['scene'] }) {
           ].map(([k, v], i) => (
             <g key={k}>
               <text x="160" y={100 + i * 36} fontFamily="IBM Plex Mono" fontSize="9" fill={STROKE} stroke="none" letterSpacing="1">{k}</text>
-              <text x="320" y={100 + i * 36} textAnchor="end" fontFamily="IBM Plex Mono" fontSize="11" fill="#1D1D1F" stroke="none">{v}</text>
+              <text x="320" y={100 + i * 36} textAnchor="end" fontFamily="IBM Plex Mono" fontSize="11" fill="#0B1B26" stroke="none">{v}</text>
               <line x1="160" x2="320" y1={108 + i * 36} y2={108 + i * 36} opacity="0.4" />
             </g>
           ))}
@@ -266,7 +266,7 @@ export function StoryboardPlayer({ source }: { source: SampleSource }) {
           value={time}
           onChange={(e) => setTime(Number(e.target.value))}
           aria-label="Storyboard position"
-          className="h-1 flex-1 accent-[#0071E3]"
+          className="h-1 flex-1 accent-[#0077BE]"
         />
         <span className="font-mono text-[11px] tabular-nums text-fg-muted">
           {timecode(time)} / {timecode(source.duration)}

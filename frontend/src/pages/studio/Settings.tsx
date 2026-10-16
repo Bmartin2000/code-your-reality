@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, RotateCcw } from 'lucide-react'
+import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, RotateCcw, Sparkles } from 'lucide-react'
 import { ErrorState, LoadingState } from '../../components/ui/primitives'
-import { Button } from '../../components/ui/Button'
-import { qk, useCapabilities } from '../../lib/queries'
+import { Button, ButtonLink } from '../../components/ui/Button'
+import { ConfirmDialog } from '../../components/ui/overlays'
+import { qk, useAccount, useCapabilities } from '../../lib/queries'
 import { api } from '../../lib/api'
-import { PLANS, SUPPORT_URL, chosenPlan } from '../../lib/plans'
+import { SUPPORT_URL } from '../../lib/plans'
+import { toast } from '../../lib/toast'
 
 function Row({ label, ok, value, hint }: { label: string; ok: boolean; value: ReactNode; hint?: ReactNode }) {
   return (
@@ -20,21 +22,56 @@ function Row({ label, ok, value, hint }: { label: string; ok: boolean; value: Re
   )
 }
 
+function Meter({ label, used, max }: { label: string; used: number; max: number }) {
+  const pct = Math.min(100, (used / Math.max(max, 1)) * 100)
+  return (
+    <div>
+      <div className="flex justify-between text-[14px]">
+        <span className="text-fg-muted">{label}</span>
+        <span className="font-medium">
+          {used} of {max}
+        </span>
+      </div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-ink-800" role="progressbar" aria-valuenow={used} aria-valuemax={max} aria-label={label}>
+        <div className={pct >= 100 ? 'h-full rounded-full bg-warning' : 'h-full rounded-full bg-accent'} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
 export default function Settings() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useCapabilities()
+  const caps = useCapabilities()
+  const account = useAccount()
   const qc = useQueryClient()
   const [rechecking, setRechecking] = useState(false)
-  const plan = PLANS.find((p) => p.id === chosenPlan()) ?? PLANS[0]
+  const [confirmDowngrade, setConfirmDowngrade] = useState(false)
+  const [downgrading, setDowngrading] = useState(false)
+  const data = caps.data
   const engineOk = !!data && data.model.reachable && data.model.installed
+  const acc = account.data
+  const plan = acc?.plan
 
   const recheck = async () => {
     setRechecking(true)
     try {
       qc.setQueryData(qk.capabilities, await api.capabilities(true))
     } catch {
-      refetch()
+      caps.refetch()
     } finally {
       setRechecking(false)
+    }
+  }
+
+  const downgrade = async () => {
+    setDowngrading(true)
+    try {
+      qc.setQueryData(qk.account, await api.changePlan('free'))
+      toast.success('Switched to the Free demo plan', 'Your apps and data are kept.')
+      setConfirmDowngrade(false)
+    } catch (e) {
+      toast.error('Could not change the plan', (e as Error).message)
+    } finally {
+      setDowngrading(false)
     }
   }
 
@@ -43,26 +80,46 @@ export default function Settings() {
       <h1 className="display mb-6 text-[clamp(2rem,6vw,2.75rem)] leading-[1.08]">Account</h1>
 
       <section className="rounded-3xl bg-ink-900 p-6" aria-labelledby="plan-title">
-        <p className="text-[14px] text-fg-subtle">Your plan</p>
-        <h2 id="plan-title" className="mt-1 text-[24px] font-semibold tracking-[-0.02em]">
-          {plan.name} · free pilot
-        </h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-fg-muted">
-          {plan.price}
-          {plan.period ?? ''} after the pilot. Online payment isn’t switched on in this preview — Integrint will contact you before anything is billed.
-        </p>
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {plan.features.map((f) => (
-            <li key={f} className="rounded-full bg-ink-950 px-3 py-1.5 text-[13px] text-fg-muted">
-              {f}
-            </li>
-          ))}
-        </ul>
+        {account.isLoading ? (
+          <LoadingState className="min-h-[120px]" />
+        ) : account.isError ? (
+          <ErrorState error={account.error} onRetry={() => account.refetch()} />
+        ) : (
+          acc &&
+          plan && (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[14px] text-fg-subtle">Your plan</p>
+                  <h2 id="plan-title" className="mt-1 flex items-center gap-2 text-[24px] font-semibold tracking-[-0.01em]">
+                    {plan.name}
+                    {plan.id !== 'free' && <Sparkles className="size-5 text-accent" />}
+                  </h2>
+                  {acc.company && <p className="mt-1 text-[14px] text-fg-muted">{acc.company} · {acc.billing_email}</p>}
+                </div>
+                {plan.id === 'free' ? (
+                  <ButtonLink to="/studio/upgrade?plan=plus" variant="primary" size="sm">
+                    Upgrade
+                  </ButtonLink>
+                ) : (
+                  <Button size="sm" variant="secondary" onClick={() => setConfirmDowngrade(true)}>
+                    Switch to Free
+                  </Button>
+                )}
+              </div>
+              <div className="mt-6 space-y-4">
+                <Meter label="Apps" used={acc.usage.apps} max={plan.apps} />
+                <Meter label="Video analyses this month" used={acc.usage.analyses_this_month} max={plan.analyses_per_month} />
+              </div>
+              <p className="mt-5 text-[13px] text-fg-subtle">Billing isn’t live in this preview: plans are switched with a demo checkout, and nothing is charged.</p>
+            </>
+          )
+        )}
       </section>
 
       <section className="rounded-3xl bg-ink-900 p-6" aria-labelledby="support-title">
         <div className="flex items-start gap-4">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-50 text-accent">
             <LifeBuoy className="size-5" />
           </span>
           <div>
@@ -79,43 +136,43 @@ export default function Settings() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 id="engine-title" className="text-[19px] font-semibold">AI engine</h2>
-            <p className="mt-1 text-[15px] text-fg-muted">{isLoading ? 'Checking…' : engineOk ? `Ready · ${data!.model.model} on this computer` : 'Offline — videos can be saved and analyzed later'}</p>
+            <p className="mt-1 text-[15px] text-fg-muted">{caps.isLoading ? 'Checking…' : engineOk ? `Ready · ${data!.model.model} on this computer` : 'Offline — videos can be saved and analyzed later'}</p>
           </div>
-          <Button size="sm" variant="secondary" onClick={recheck} loading={rechecking || isFetching} icon={<RotateCcw className="size-4" />}>
+          <Button size="sm" variant="secondary" onClick={recheck} loading={rechecking || caps.isFetching} icon={<RotateCcw className="size-4" />}>
             Check
           </Button>
         </div>
         <details className="mt-4">
           <summary className="cursor-pointer text-[14px] text-accent">Technical details</summary>
           <div className="mt-2">
-            {isLoading ? (
+            {caps.isLoading ? (
               <LoadingState className="min-h-[120px]" />
-            ) : isError ? (
-              <ErrorState error={error} onRetry={() => refetch()} />
+            ) : caps.isError ? (
+              <ErrorState error={caps.error} onRetry={() => caps.refetch()} />
             ) : (
               data && (
                 <>
                   <Row label="Model server" ok={data.model.reachable} value={`Ollama-compatible · ${data.model.url}`} hint={data.model.reachable ? undefined : data.model.error} />
-                  <Row
-                    label="Model"
-                    ok={data.model.installed}
-                    value={data.model.model}
-                    hint={data.model.installed ? (data.model.vision ? 'Can see video frames as well as read the transcript.' : 'No vision: uses the transcript and narration only.') : data.model.error}
-                  />
-                  <Row
-                    label="Speech to text"
-                    ok={data.transcription.installed && data.transcription.enabled}
-                    value={`faster-whisper · ${data.transcription.model}`}
-                    hint={data.transcription.installed ? 'The first use downloads the speech model.' : 'Not installed: frames and written notes only.'}
-                  />
+                  <Row label="Model" ok={data.model.installed} value={data.model.model} hint={data.model.installed ? (data.model.vision ? 'Sees the video frames and reads the transcript.' : 'No vision: transcript and notes only.') : data.model.error} />
+                  <Row label="Speech to text" ok={data.transcription.installed && data.transcription.enabled} value={`faster-whisper · ${data.transcription.model}`} />
                   <Row label="Video processing" ok={data.ffmpeg.available} value={`FFmpeg · ${data.ffmpeg.source}`} />
-                  <Row ok label="Limits" value={`${data.limits.max_upload_mb} MB · ${Math.round(data.limits.max_video_seconds / 60)} min per video · ${data.limits.frame_samples} frames analyzed`} />
+                  <Row ok label="Frames analyzed per video" value={`${plan?.frame_samples ?? data.limits.frame_samples} on your plan · up to ${Math.round(data.limits.max_video_seconds / 60)} min per video`} />
                 </>
               )
             )}
           </div>
         </details>
       </section>
+
+      <ConfirmDialog
+        open={confirmDowngrade}
+        onClose={() => setConfirmDowngrade(false)}
+        onConfirm={downgrade}
+        loading={downgrading}
+        title="Switch to the Free demo plan?"
+        description="Your apps and their data are kept. Reports, Connections and Team access are switched off, and only your first app can be rebuilt."
+        confirmLabel="Switch to Free"
+      />
     </div>
   )
 }

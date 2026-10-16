@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { AppWindow, House, Plus, UserRound } from 'lucide-react'
 import { BrandMark } from '../ui/primitives'
+import { useAccount } from '../../lib/queries'
 import { cn } from '../../lib/cn'
 
 const NAV = [
@@ -12,14 +13,25 @@ const NAV = [
 ]
 
 export default function StudioShell() {
+  const account = useAccount()
+  const plan = account.data?.plan
   return (
     <div className="min-h-dvh bg-ink-950 text-fg">
       {/* Top bar (all sizes) */}
       <header className="sticky top-0 z-40 border-b border-line-soft/70 bg-ink-950/80 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-4 sm:px-6">
-          <Link to="/" aria-label="Reality Compiler home">
+          <Link to="/" aria-label="Code Your Reality home">
             <BrandMark />
           </Link>
+          <div className="flex items-center gap-2">
+          {plan && (
+            <Link
+              to={plan.id === 'free' ? '/studio/upgrade?plan=plus' : '/studio/settings'}
+              className={cn('rounded-full px-3 py-1.5 text-[13px] font-semibold md:order-last', plan.id === 'free' ? 'bg-accent text-white' : 'bg-brand-50 text-accent')}
+            >
+              {plan.id === 'free' ? 'Upgrade to Plus' : plan.name}
+            </Link>
+          )}
           <nav className="hidden items-center gap-1 md:flex" aria-label="Studio">
             {NAV.map(({ to, label, end }) => (
               <NavLink
@@ -32,6 +44,7 @@ export default function StudioShell() {
               </NavLink>
             ))}
           </nav>
+          </div>
         </div>
       </header>
 

@@ -36,11 +36,11 @@ function CounterScene({ t }: { t: number }) {
       <rect width="320" height="180" fill="#FFFFFF" />
       {/* soft key light */}
       <radialGradient id="hv-light" cx="0.3" cy="0.2" r="0.9">
-        <stop offset="0" stopColor="#1D1D1F" stopOpacity="0.08" />
-        <stop offset="1" stopColor="#1D1D1F" stopOpacity="0" />
+        <stop offset="0" stopColor="#0B1B26" stopOpacity="0.08" />
+        <stop offset="1" stopColor="#0B1B26" stopOpacity="0" />
       </radialGradient>
       <rect width="320" height="180" fill="url(#hv-light)" />
-      <g stroke="#AEAEB2" strokeWidth="1" fill="none">
+      <g stroke="#A9B6BF" strokeWidth="1" fill="none">
         <line x1="20" y1="70" x2="170" y2="70" />
         <line x1="20" y1="120" x2="170" y2="120" />
         <rect x="34" y="44" width="40" height="26" rx="3" />
@@ -52,14 +52,14 @@ function CounterScene({ t }: { t: number }) {
         {[0, 1, 2, 3].map((i) => (
           <g key={i}>
             <line x1="206" x2="248" y1={50 + i * 20} y2={50 + i * 20} />
-            <rect x="256" y={44 + i * 20} width="34" height="11" rx="2" stroke={i === 0 ? (on(t, 0.5) ? '#0071E3' : '#1D8A3E') : '#C7C7CC'} />
+            <rect x="256" y={44 + i * 20} width="34" height="11" rx="2" stroke={i === 0 ? (on(t, 0.5) ? '#0077BE' : '#0E7A50') : '#D6DEE3'} />
           </g>
         ))}
         {/* counter */}
-        <line x1="0" y1="150" x2="320" y2="150" stroke="#D2D2D7" />
+        <line x1="0" y1="150" x2="320" y2="150" stroke="#D6DEE3" />
         <rect x="120" y="134" width="70" height="16" rx="2" />
       </g>
-      <text x="262" y="53" fontFamily="IBM Plex Mono" fontSize="6.5" fill={on(t, 0.5) ? '#0071E3' : '#1D8A3E'}>
+      <text x="262" y="53" fontFamily="IBM Plex Mono" fontSize="6.5" fill={on(t, 0.5) ? '#0077BE' : '#0E7A50'}>
         {on(t, 0.5) ? 'RENTED' : 'AVAIL.'}
       </text>
       {/* detection brackets */}
@@ -69,9 +69,9 @@ function CounterScene({ t }: { t: number }) {
         { x: 114, y: 128, w: 82, h: 28, label: 'RENTAL SLIP', at: 0.2 },
       ].map((b) =>
         on(t, b.at) ? (
-          <g key={b.label} stroke="#0071E3" strokeWidth="1.2" fill="none">
+          <g key={b.label} stroke="#0077BE" strokeWidth="1.2" fill="none">
             <path d={`M${b.x} ${b.y + 7}V${b.y}h7 M${b.x + b.w - 7} ${b.y}h7v7 M${b.x + b.w} ${b.y + b.h - 7}v7h-7 M${b.x + 7} ${b.y + b.h}h-7v-7`} />
-            <text x={b.x} y={b.y - 4} fontFamily="IBM Plex Mono" fontSize="6.5" fill="#0071E3" stroke="none" letterSpacing="0.6">
+            <text x={b.x} y={b.y - 4} fontFamily="IBM Plex Mono" fontSize="6.5" fill="#0077BE" stroke="none" letterSpacing="0.6">
               {b.label}
             </text>
           </g>
@@ -125,10 +125,10 @@ export function HeroVisual() {
         {/* connective tissue */}
         <svg className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
           {[34, 50, 66].map((y, i) => (
-            <path key={i} d={`M35 ${y} C 40 ${y}, 38 ${50 + (y - 50) * 0.4}, 43 ${50 + (y - 50) * 0.4}`} stroke={phase >= 1 ? '#0071E3' : '#D2D2D7'} strokeOpacity={phase >= 1 ? 0.55 : 1} strokeWidth="0.15" fill="none" strokeDasharray="0.6 0.9" className={phase === 1 ? 'animate-dash' : undefined} vectorEffect="non-scaling-stroke" />
+            <path key={i} d={`M35 ${y} C 40 ${y}, 38 ${50 + (y - 50) * 0.4}, 43 ${50 + (y - 50) * 0.4}`} stroke={phase >= 1 ? '#0077BE' : '#D6DEE3'} strokeOpacity={phase >= 1 ? 0.55 : 1} strokeWidth="0.15" fill="none" strokeDasharray="0.6 0.9" className={phase === 1 ? 'animate-dash' : undefined} vectorEffect="non-scaling-stroke" />
           ))}
           {[42, 50, 58].map((y, i) => (
-            <path key={i} d={`M57 ${y} C 62 ${y}, 60 ${50 + (y - 50) * 2}, 65 ${50 + (y - 50) * 2}`} stroke={phase >= 2 ? '#0071E3' : '#D2D2D7'} strokeOpacity={phase >= 2 ? 0.55 : 1} strokeWidth="0.15" fill="none" strokeDasharray="0.6 0.9" className={phase === 2 ? 'animate-dash' : undefined} vectorEffect="non-scaling-stroke" />
+            <path key={i} d={`M57 ${y} C 62 ${y}, 60 ${50 + (y - 50) * 2}, 65 ${50 + (y - 50) * 2}`} stroke={phase >= 2 ? '#0077BE' : '#D6DEE3'} strokeOpacity={phase >= 2 ? 0.55 : 1} strokeWidth="0.15" fill="none" strokeDasharray="0.6 0.9" className={phase === 2 ? 'animate-dash' : undefined} vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
 
@@ -163,7 +163,7 @@ export function HeroVisual() {
               {['Customer', 'Item', 'Rental', 'Deposit', 'Return'].map((e, i) => (
                 <Appear key={e} show={on(t, 0.12 + i * 0.035)}>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-ink-900 px-2.5 py-1 text-[12px] text-fg">
-                    <span className="size-1.5 rounded-full" style={{ background: i < 2 ? '#0071E3' : '#7D4CDB' }} />
+                    <span className="size-1.5 rounded-full" style={{ background: i < 2 ? '#0077BE' : '#6B4FD8' }} />
                     {e}
                   </span>
                 </Appear>
@@ -176,7 +176,7 @@ export function HeroVisual() {
                   <span className="font-mono text-[10px] text-accent">NARRATION 00:09–00:14</span>
                   <motion.span
                     initial={false}
-                    animate={{ color: on(t, 0.48) ? '#1D8A3E' : '#B25E00', borderColor: on(t, 0.48) ? 'rgba(29,138,62,0.35)' : 'rgba(178,94,0,0.35)' }}
+                    animate={{ color: on(t, 0.48) ? '#0E7A50' : '#8A5A00', borderColor: on(t, 0.48) ? 'rgba(29,138,62,0.35)' : 'rgba(178,94,0,0.35)' }}
                     className="rounded-full border px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.06em]"
                   >
                     {on(t, 0.48) ? 'Human confirmed' : 'Needs review'}
@@ -235,8 +235,8 @@ export function HeroVisual() {
                       <motion.span
                         initial={false}
                         animate={{
-                          color: flip && on(t, 0.84) ? '#0071E3' : '#1D8A3E',
-                          borderColor: flip && on(t, 0.84) ? 'rgba(0,113,227,0.4)' : 'rgba(29,138,62,0.3)',
+                          color: flip && on(t, 0.84) ? '#0077BE' : '#0E7A50',
+                          borderColor: flip && on(t, 0.84) ? 'rgba(0,119,190,0.4)' : 'rgba(29,138,62,0.3)',
                         }}
                         className="rounded-full border px-1.5 font-mono text-[8.5px] uppercase"
                       >

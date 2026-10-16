@@ -126,6 +126,57 @@ class GeneratedApp(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
+class Account(Base):
+    """The workspace's subscription. Single-tenant build: one row with id 'default'."""
+
+    __tablename__ = "account"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default="default")
+    plan: Mapped[str] = mapped_column(String(20), default="free")  # free | plus | business
+    company: Mapped[str] = mapped_column(String(200), default="")
+    billing_email: Mapped[str] = mapped_column(String(254), default="")
+    plan_started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class AppSettings(Base):
+    """Per-application settings kept outside the app row so existing databases need no migration."""
+
+    __tablename__ = "app_settings"
+
+    app_id: Mapped[str] = mapped_column(ForeignKey("generated_apps.id", ondelete="CASCADE"), primary_key=True)
+    access_mode: Mapped[str] = mapped_column(String(10), default="open")  # open | team
+    calendar_token: Mapped[str] = mapped_column(String(48), default=lambda: uuid.uuid4().hex)
+
+
+class AppMember(Base):
+    """A person with access to a generated application, identified by a personal access key."""
+
+    __tablename__ = "app_members"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    app_id: Mapped[str] = mapped_column(ForeignKey("generated_apps.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(String(20))  # owner | manager | staff | viewer
+    key: Mapped[str] = mapped_column(String(64), unique=True, index=True, default=lambda: uuid.uuid4().hex + uuid.uuid4().hex)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class AppWebhook(Base):
+    """Outgoing HTTP notification for application events (create, transition, effect, rejection)."""
+
+    __tablename__ = "app_webhooks"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    app_id: Mapped[str] = mapped_column(ForeignKey("generated_apps.id", ondelete="CASCADE"), index=True)
+    url: Mapped[str] = mapped_column(String(500))
+    secret: Mapped[str] = mapped_column(String(64), default=lambda: uuid.uuid4().hex)
+    active: Mapped[bool] = mapped_column(default=True)
+    last_status: Mapped[str | None] = mapped_column(String(200), default=None)
+    last_sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class Record(Base):
     """A row of operational data inside a generated application (e.g. an item, customer or rental)."""
 

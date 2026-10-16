@@ -25,6 +25,7 @@ from ..workflow.compiler import COMPILE_STAGES, CompileError, Compiler
 from ..workflow.schema import WorkflowDefinition
 from ..workflow.validation import validate
 from . import apps as app_service
+from . import plans
 from .audit import record_audit
 
 log = logging.getLogger("reality_compiler.jobs")
@@ -236,7 +237,9 @@ def _run_analysis(job_id: str) -> None:
         t.skip("frame_sampling", "No video provided")
     else:
         try:
-            frames = media_mod.sample_frames(video_path, duration, work_dir / "frames", settings.frame_samples, settings.frame_width)
+            with SessionLocal() as s:
+                frame_count = min(plans.limits(s).frame_samples, max(settings.frame_samples, 1) * 2)
+            frames = media_mod.sample_frames(video_path, duration, work_dir / "frames", frame_count, settings.frame_width)
             with SessionLocal() as s:
                 a = s.get(MediaAsset, asset_id)
                 a.frames = frames

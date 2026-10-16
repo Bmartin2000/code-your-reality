@@ -1,4 +1,10 @@
 import type {
+  AccountSummary,
+  AppIntegrations,
+  AppReports,
+  AppTeam,
+  AppMember,
+  LockedApp,
   AppDetail,
   AppRecord,
   AppStats,
@@ -16,6 +22,9 @@ import type { WorkflowDefinition } from './workflow-schema'
 
 export interface ApiErrorBody {
   message: string
+  upgrade?: boolean
+  feature?: string
+  auth?: boolean
   field_errors?: Record<string, string>
   rule?: { id: string; statement: string; kind: string; source: string }
   issues?: { severity: string; message: string; target_kind: string; target_id: string }[]
@@ -35,16 +44,43 @@ export class ApiError extends Error {
   }
 }
 
+/** Personal access keys for private (team) apps, remembered per app in this browser. */
+export function appKey(slug: string): string | null {
+  try {
+    return localStorage.getItem(`cyr.key.${slug}`)
+  } catch {
+    return null
+  }
+}
+
+export function setAppKey(slug: string, key: string | null) {
+  try {
+    if (key) localStorage.setItem(`cyr.key.${slug}`, key)
+    else localStorage.removeItem(`cyr.key.${slug}`)
+  } catch {
+    /* storage unavailable: the key has to come with the link each time */
+  }
+}
+
+function headersFor(path: string, body: unknown): Record<string, string> {
+  const h: Record<string, string> = {}
+  if (body !== undefined && !(body instanceof FormData)) h['Content-Type'] = 'application/json'
+  const m = path.match(/^\/api\/apps\/([^/?]+)/)
+  const key = m ? appKey(m[1]) : null
+  if (key) h['X-App-Key'] = key
+  return h
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
   try {
     res = await fetch(path, {
       method,
-      headers: body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : undefined,
+      headers: headersFor(path, body),
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(0, { message: 'Cannot reach the Reality Compiler server. Check that the backend is running.' })
+    throw new ApiError(0, { message: 'Cannot reach the Code Your Reality server. Check that the backend is running.' })
   }
   if (res.status === 204) return undefined as T
   const text = await res.text()
@@ -121,7 +157,7 @@ export const api = {
   audit: (id: string) => request<AuditEvent[]>('GET', `/api/projects/${id}/audit`),
 
   apps: () => request<AppSummary[]>('GET', '/api/apps'),
-  app: (slug: string) => request<AppDetail>('GET', `/api/apps/${slug}`),
+  app: (slug: string) => request<AppDetail | LockedApp>('GET', `/api/apps/${slug}`),
   appStats: (slug: string) => request<AppStats>('GET', `/api/apps/${slug}/stats`),
   appEvents: (slug: string, limit = 40) => request<RecordEvent[]>('GET', `/api/apps/${slug}/events?limit=${limit}`),
   records: (slug: string, entity: string) => request<AppRecord[]>('GET', `/api/apps/${slug}/records/${entity}`),
@@ -134,6 +170,28 @@ export const api = {
   transition: (slug: string, entity: string, id: string, transition: string) =>
     request<{ record: AppRecord; effects: Effect[] }>('POST', `/api/apps/${slug}/records/${entity}/${id}/transitions/${transition}`),
   seedSample: (slug: string) => request<{ created: Record<string, number> }>('POST', `/api/apps/${slug}/seed-sample`),
-  exportUrl: (slug: string) => `/api/apps/${slug}/export`,
+  exportUrl: (slug: string) => {
+    const key = appKey(slug)
+    return `/api/apps/${slug}/export${key ? `?key=${key}` : ''}`
+  },
+  csvUrl: (path: string, slug: string) => {
+    const key = appKey(slug)
+    return `${path}${key ? `?key=${key}` : ''}`
+  },
+  reports: (slug: string) => request<AppReports>('GET', `/api/apps/${slug}/reports`),
+  integrations: (slug: string) => request<AppIntegrations>('GET', `/api/apps/${slug}/integrations`),
+  addWebhook: (slug: string, url: string) => request<{ id: string; secret: string }>('POST', `/api/apps/${slug}/webhooks`, { url }),
+  deleteWebhook: (slug: string, id: string) => request<void>('DELETE', `/api/apps/${slug}/webhooks/${id}`),
+  testWebhook: (slug: string, id: string) => request<{ status: string }>('POST', `/api/apps/${slug}/webhooks/${id}/test`),
+  team: (slug: string) => request<AppTeam>('GET', `/api/apps/${slug}/team`),
+  enableTeam: (slug: string) => request<{ access_mode: string; owner_key: string }>('POST', `/api/apps/${slug}/team/enable`),
+  disableTeam: (slug: string) => request<{ access_mode: string }>('POST', `/api/apps/${slug}/team/disable`),
+  addMember: (slug: string, name: string, role: string) => request<AppMember>('POST', `/api/apps/${slug}/team`, { name, role }),
+  removeMember: (slug: string, id: string) => request<void>('DELETE', `/api/apps/${slug}/team/${id}`),
+
+  account: () => request<AccountSummary>('GET', '/api/account'),
+  checkout: (plan: 'plus' | 'business', company: string, billing_email: string) =>
+    request<AccountSummary & { charged: boolean }>('POST', '/api/account/checkout', { plan, company, billing_email }),
+  changePlan: (plan: 'free' | 'plus' | 'business') => request<AccountSummary>('POST', '/api/account/plan', { plan }),
   resetApp: (slug: string) => request<{ deleted: number }>('POST', `/api/apps/${slug}/reset`),
 }
