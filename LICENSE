@@ -1,0 +1,21 @@
+Copyright (c) 2026 Integrint Kft. All rights reserved.
+
+Reality Compiler, including its source code, design, documentation and the
+"Reality Compiler" name, is proprietary to Integrint Kft.
+
+The source code is published for viewing and evaluation only, including by
+the judges and participants of the Hacktoberfest 2026 Open-Source AI
+Challenge. No license is granted to use, copy, modify, merge, publish,
+distribute, sublicense, or sell the software or any part of it, or to build
+derivative or competing products from it, without prior written permission
+from Integrint Kft.
+
+Third-party components keep their own licenses. These include the
+dependencies listed in backend/requirements.txt and frontend/package.json,
+and the AI models used at runtime, such as Google's Gemma (Gemma Terms of Use)
+and faster-whisper. No model weights are distributed with this repository.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED.
+
+Contact: https://integrint.hu

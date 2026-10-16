@@ -244,3 +244,7 @@ Playwright starts its own backend (:8001, temporary data directory) and Vite ser
 ---
 
 See [docs/demo-script.md](docs/demo-script.md) for the 60–90 second jury walkthrough.
+
+## License
+
+© 2026 Integrint Kft. All rights reserved. The code is public for viewing and evaluation only (including by the Hacktoberfest challenge judges). Any other use needs written permission. See [LICENSE](LICENSE). Third-party dependencies and AI models keep their own licenses.
