@@ -1,22 +1,34 @@
 import { defineConfig, devices } from '@playwright/test'
+import os from 'node:os'
+import path from 'node:path'
 
-// Expects the backend on :8000 and the Vite dev server on :5173 (see README), or starts them.
+// End-to-end tests run against their own backend (port 8001) with a throwaway data directory and
+// their own Vite server (port 5174), so they never touch your development database.
+const dataDir = path.join(os.tmpdir(), `rc-e2e-${Date.now()}`)
+const python = JSON.stringify(path.resolve('..', 'backend', '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python'))
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 90_000,
   fullyParallel: false,
   reporter: 'list',
-  use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure' },
+  use: { baseURL: 'http://localhost:5174', trace: 'retain-on-failure' },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /smoke/ },
   ],
   webServer: [
     {
-      command: process.platform === 'win32' ? '..\backend\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000 --app-dir ../backend' : '../backend/.venv/bin/python -m uvicorn app.main:app --port 8000 --app-dir ../backend',
-      url: 'http://127.0.0.1:8000/api/health',
-      reuseExistingServer: true,
+      command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --app-dir ${JSON.stringify(path.resolve("..", "backend"))}`,
+      url: 'http://127.0.0.1:8001/api/health',
+      env: { RC_DATA_DIR: dataDir, RC_WHISPER_ENABLED: 'false', RC_CORS_ORIGINS: 'http://localhost:5174' },
+      reuseExistingServer: false,
     },
-    { command: 'npm run dev', url: 'http://localhost:5173', reuseExistingServer: true },
+    {
+      command: 'npx vite --port 5174 --strictPort',
+      url: 'http://localhost:5174',
+      env: { RC_API_URL: 'http://127.0.0.1:8001' },
+      reuseExistingServer: false,
+    },
   ],
 })

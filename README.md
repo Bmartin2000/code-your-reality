@@ -5,6 +5,21 @@
 
 Reality Compiler turns a recorded business process into a working application. You record or upload a short demonstration of how work is done. A local open-weight AI model proposes the process structure: entities, states, actions and business rules, each traced back to the second of the recording it came from. A person confirms or corrects every finding. The approved workflow then compiles into a schema-driven application that actually runs: records persist, and the server enforces the business rules on every operation.
 
+![Reality Compiler landing page: a recorded rental counter becomes structured rules and a running application](docs/screenshots/landing-hero.png)
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Understand workspace: evidence, workflow structure and the rule inspector, with the cited transcript segment highlighted](docs/screenshots/studio-understand.png) | ![Verification: every AI finding is confirmed or rejected before approval](docs/screenshots/studio-verify.png) |
+| **Understand**: evidence on the left, structure in the center, inspector on the right. Selecting a rule highlights the narration it came from. | **Verify**: nothing compiles until a person confirms or rejects each finding. |
+| ![Compile: six measured compiler stages and the application assembly](docs/screenshots/studio-compile.png) | ![Generated rental application dashboard with live availability and the activity log](docs/screenshots/app-overview.png) |
+| **Compile**: real stage results with measured timings, plus the assembly built from the manifest. | **Operate**: the generated app, with records persisted on the server. |
+| ![The server refuses a second rental of an item that is already rented](docs/screenshots/app-rule-enforced.png) | ![Mobile layouts of the landing page and the generated app](docs/screenshots/mobile-app.png) |
+| **Rules are enforced server-side**: renting an item twice is refused, and the reason names the rule. | **Responsive**: Studio and generated apps adapt down to 390px. |
+
+Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` while both dev servers are running.
+
 ---
 
 ## Why this is different
@@ -157,6 +172,17 @@ macOS/Linux: use `.venv/bin/python` instead of `.\.venv\Scripts\python.exe`.
 3. Click **Upload and analyze** and watch the real job stages. On a laptop CPU/GPU, `qwen3.5:4b` took about 6.5 minutes of model time for a 48-second clip in our tests (two constrained passes; the second, with the rule grammar, is the slower one). Larger models are slower but more accurate.
 4. Review the proposal in the workspace. Items the model cited show their transcript quote and timestamp, and claims of direct evidence without a citation are downgraded to *AI inference*. Correct whatever is wrong, approve, and compile.
 
+### Choosing a model
+
+The default is `qwen3.5:4b`, a good fit for a laptop without a dedicated GPU (development machine: Intel Core Ultra 7 155U, 15 GB RAM, CPU inference). There, one analysis takes several minutes, and the model gets entities and lifecycles right more reliably than rules. On a machine with a GPU with 12 GB+ VRAM, or plenty of RAM and patience, a larger vision model from the Ollama library gives better rule mapping:
+
+```powershell
+ollama pull <larger-vision-model>              # any Ollama model whose capabilities include "vision"
+$env:RC_OLLAMA_MODEL = "<larger-vision-model>" # or set RC_OLLAMA_MODEL in .env
+```
+
+Studio → Settings shows whether the configured model is installed and has vision. Expect roughly 2× the analysis time per doubling of parameters on CPU. The guided demo (Path A) doesn't use a model at all.
+
 ## Testing
 
 ```powershell
@@ -166,7 +192,7 @@ cd frontend; npm test                                          # 9 Vitest tests:
 cd frontend; npx playwright install chromium; npm run test:e2e # 15 Playwright tests: full guided journey + desktop/mobile smoke
 ```
 
-The Playwright config reuses running servers on :8000 and :5173, or starts them itself.
+Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.
 
 ## Limitations (honest)
 
