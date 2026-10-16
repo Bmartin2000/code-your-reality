@@ -16,19 +16,19 @@ export function CompilerCore({ layers, className, label }: { layers: LayerState[
   const xs = CORE_LAYERS.map((_, i) => 24 + i * (W + gap))
 
   const tone = (s: LayerState) =>
-    s === 'active' ? '#C5F477' : s === 'done' ? '#8DE1B0' : s === 'failed' ? '#F18585' : '#3A4542'
+    s === 'active' ? '#0071E3' : s === 'done' ? '#1D8A3E' : s === 'failed' ? '#D70015' : '#C7C7CC'
 
   return (
     <figure className={cn('relative', className)} aria-label={label ?? 'Compiler core'}>
       <svg viewBox="0 0 780 236" className="h-auto w-full" role="img" aria-hidden={!label}>
         <defs>
           <linearGradient id="core-face" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#1A2020" />
-            <stop offset="1" stopColor="#0F1314" />
+            <stop offset="0" stopColor="#FFFFFF" />
+            <stop offset="1" stopColor="#F5F5F7" />
           </linearGradient>
           <linearGradient id="core-face-active" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#1E2620" />
-            <stop offset="1" stopColor="#111611" />
+            <stop offset="0" stopColor="#F2F7FE" />
+            <stop offset="1" stopColor="#F5F9FF" />
           </linearGradient>
         </defs>
 
@@ -47,7 +47,7 @@ export function CompilerCore({ layers, className, label }: { layers: LayerState[
                   key={k}
                   d={`M${x1} ${y1 - 18 + k * 18} C ${x1 + gap / 2} ${y1 - 18 + k * 18}, ${x2 - gap / 2} ${y1 + 2 + k * 18}, ${x2} ${y1 + 2 + k * 18}`}
                   fill="none"
-                  stroke={flowing ? tone(to === 'active' ? 'active' : 'done') : '#2D3633'}
+                  stroke={flowing ? tone(to === 'active' ? 'active' : 'done') : '#D2D2D7'}
                   strokeOpacity={flowing ? 0.85 : 0.7}
                   strokeWidth={1}
                   strokeDasharray={flowing && to === 'active' ? '3 5' : undefined}
@@ -79,9 +79,9 @@ export function CompilerCore({ layers, className, label }: { layers: LayerState[
               />
               {/* glyph layer, drawn in the slab's skewed plane */}
               <g transform={`matrix(1 ${-skew / W} 0 1 ${x} ${top + skew})`} opacity={s === 'idle' ? 0.45 : 1}>
-                <Glyph index={i} color={s === 'idle' ? '#56625E' : stroke} active={s === 'active' && !reduce} />
+                <Glyph index={i} color={s === 'idle' ? '#AEAEB2' : stroke} active={s === 'active' && !reduce} />
               </g>
-              <text x={x} y={top + h + skew + 26} fill={s === 'idle' ? '#7B8783' : stroke} fontFamily="IBM Plex Mono" fontSize="10.5" letterSpacing="1.2">
+              <text x={x} y={top + h + skew + 26} fill={s === 'idle' ? '#86868B' : stroke} fontFamily="IBM Plex Mono" fontSize="10.5" letterSpacing="1.2">
                 {String(i + 1).padStart(2, '0')} {CORE_LAYERS[i].toUpperCase()}
               </text>
               {s === 'active' && !reduce && (
@@ -89,7 +89,7 @@ export function CompilerCore({ layers, className, label }: { layers: LayerState[
                   x={x - 1}
                   width={W + 2}
                   height={2}
-                  fill="#C5F477"
+                  fill="#0071E3"
                   initial={{ y: top + 4, opacity: 0 }}
                   animate={{ y: [top + 8, top + h + 6], opacity: [0, 0.9, 0] }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
@@ -111,7 +111,7 @@ function Glyph({ index, color, active }: { index: number; color: string; active:
       <g fill="none" stroke={c} strokeWidth="1">
         {[0, 1, 2].map((k) => (
           <g key={k} transform={`translate(${16 + k * 6} ${14 + k * 16})`}>
-            <rect width="76" height="44" rx="3" fill="#0B0E0F" />
+            <rect width="76" height="44" rx="3" fill="#FFFFFF" />
             {[0, 1, 2, 3, 4, 5].map((d) => (
               <rect key={d} x={6 + d * 12} y={3} width="5" height="3" fill={c} stroke="none" opacity="0.5" />
             ))}
@@ -128,7 +128,7 @@ function Glyph({ index, color, active }: { index: number; color: string; active:
   if (index === 1)
     return (
       <g fill="none" stroke={c} strokeWidth="1">
-        <rect x="12" y="14" width="96" height="64" rx="3" fill="#0B0E0F" strokeOpacity="0.5" />
+        <rect x="12" y="14" width="96" height="64" rx="3" fill="#FFFFFF" strokeOpacity="0.5" />
         {[
           [20, 24, 30, 24],
           [62, 30, 36, 38],
@@ -157,9 +157,9 @@ function Glyph({ index, color, active }: { index: number; color: string; active:
           [90, 58],
           [60, 112],
         ].map(([x, y], k) => (
-          <circle key={k} cx={x} cy={y} r="6" fill="#0B0E0F" />
+          <circle key={k} cx={x} cy={y} r="6" fill="#FFFFFF" />
         ))}
-        <path d="M60 66 L70 76 L60 86 L50 76 Z" fill="#0B0E0F" />
+        <path d="M60 66 L70 76 L60 86 L50 76 Z" fill="#FFFFFF" />
         <circle cx="30" cy="24" r="2.5" fill={c} stroke="none" />
         {active && (
           <circle r="2.5" fill={c} stroke="none">
@@ -171,7 +171,7 @@ function Glyph({ index, color, active }: { index: number; color: string; active:
     )
   return (
     <g fill="none" stroke={c} strokeWidth="1">
-      <rect x="10" y="12" width="100" height="120" rx="5" fill="#0B0E0F" />
+      <rect x="10" y="12" width="100" height="120" rx="5" fill="#FFFFFF" />
       <line x1="10" y1="26" x2="110" y2="26" strokeOpacity="0.5" />
       {[0, 1, 2].map((k) => (
         <circle key={k} cx={18 + k * 7} cy="19" r="2" fill={c} fillOpacity="0.5" stroke="none" />

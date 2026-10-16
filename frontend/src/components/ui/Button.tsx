@@ -10,17 +10,17 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-accent text-ink-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_0_0_1px_rgba(197,244,119,0.4)] hover:bg-[#d3fa92] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_0_0_1px_rgba(197,244,119,0.6),0_8px_24px_-8px_rgba(197,244,119,0.45)]',
-  secondary: 'border border-line bg-ink-900 text-fg hover:border-fg-subtle/60 hover:bg-ink-800',
+    'bg-accent text-on-accent hover:bg-[#0077ED]',
+  secondary: 'border border-line bg-ink-900 text-fg hover:bg-ink-850',
   ghost: 'text-fg-muted hover:bg-ink-800 hover:text-fg',
   quiet: 'border border-line-soft bg-transparent text-fg-muted hover:border-line hover:text-fg',
   danger: 'border border-error/40 bg-error/10 text-error hover:bg-error/20',
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px]',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-6 text-[15px]',
+  sm: 'h-9 px-4 text-[14px]',
+  md: 'h-11 px-5 text-[15px]',
+  lg: 'h-13 px-7 text-[17px]',
 }
 
 export function Spinner({ className }: { className?: string }) {

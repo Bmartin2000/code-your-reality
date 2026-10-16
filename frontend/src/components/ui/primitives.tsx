@@ -38,10 +38,10 @@ export function BrandMark({ className, withWord = true }: { className?: string; 
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <svg viewBox="0 0 32 32" className="size-7 shrink-0" aria-hidden>
-        <rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="#121617" stroke="#2D3633" />
-        <path d="M8.5 9h6.5a5 5 0 0 1 0 10H8.5z" fill="none" stroke="#F2F3EE" strokeWidth="2" />
-        <path d="M15 19l6 5" stroke="#F2F3EE" strokeWidth="2" strokeLinecap="round" />
-        <rect x="19.5" y="8" width="4.5" height="4.5" rx="1" fill="#C5F477" />
+        <rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="#FFFFFF" stroke="#D2D2D7" />
+        <path d="M8.5 9h6.5a5 5 0 0 1 0 10H8.5z" fill="none" stroke="#1D1D1F" strokeWidth="2" />
+        <path d="M15 19l6 5" stroke="#1D1D1F" strokeWidth="2" strokeLinecap="round" />
+        <rect x="19.5" y="8" width="4.5" height="4.5" rx="1" fill="#0071E3" />
       </svg>
       {withWord && (
         <span className="text-[15px] font-semibold tracking-[-0.02em] text-fg">
@@ -81,10 +81,10 @@ export function StatusIndicator({ status, className }: { status: ProjectStatus; 
 // --- Provenance -----------------------------------------------------------------------------
 
 export const PROVENANCE_META: Record<ProvenanceSource, { label: string; short: string; icon: typeof Eye; color: string }> = {
-  observed: { label: 'Directly observed', short: 'Observed', icon: Eye, color: '#9fc5e8' },
-  narration: { label: 'From narration', short: 'Narration', icon: Mic, color: '#c9b6f2' },
-  inferred: { label: 'AI inference', short: 'Inferred', icon: Sparkles, color: '#ffc777' },
-  human: { label: 'Human authored', short: 'Human', icon: UserCheck, color: '#8de1b0' },
+  observed: { label: 'Directly observed', short: 'Observed', icon: Eye, color: '#0071E3' },
+  narration: { label: 'From narration', short: 'Narration', icon: Mic, color: '#7D4CDB' },
+  inferred: { label: 'AI inference', short: 'Inferred', icon: Sparkles, color: '#B25E00' },
+  human: { label: 'Human authored', short: 'Human', icon: UserCheck, color: '#1D8A3E' },
 }
 
 export function ProvenanceBadge({ source, compact, className }: { source: ProvenanceSource; compact?: boolean; className?: string }) {

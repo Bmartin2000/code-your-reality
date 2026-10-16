@@ -166,7 +166,7 @@ export function UnderstandWorkspace({ project }: { project: ProjectDetail }) {
     <div className="mx-auto max-w-[1760px]">
       <div className={cn('grid gap-0', xl ? (evidenceOpen ? 'grid-cols-[300px_minmax(0,1fr)_360px] 2xl:grid-cols-[360px_minmax(0,1fr)_420px]' : 'grid-cols-[48px_minmax(0,1fr)_360px] 2xl:grid-cols-[48px_minmax(0,1fr)_420px]') : 'grid-cols-1')}>
         {/* LEFT · evidence */}
-        <aside className={cn('border-line-soft px-4 py-6 sm:px-6 xl:sticky xl:top-[77px] xl:max-h-[calc(100dvh-77px)] xl:overflow-y-auto xl:border-r xl:px-5', !xl && 'border-b')} aria-label="Evidence">
+        <aside className={cn('border-line-soft px-4 py-6 sm:px-6 xl:sticky xl:top-14 xl:max-h-[calc(100dvh-56px)] xl:overflow-y-auto xl:border-r xl:px-5', !xl && 'border-b')} aria-label="Evidence">
           <div className="mb-4 flex items-center justify-between">
             {(evidenceOpen || !xl) && <TechnicalLabel>Evidence</TechnicalLabel>}
             <button onClick={() => setEvidenceOpen(!evidenceOpen)} className="inline-flex size-7 items-center justify-center rounded-md text-fg-subtle hover:bg-ink-800 hover:text-fg" aria-label={evidenceOpen ? 'Collapse evidence panel' : 'Expand evidence panel'} aria-expanded={evidenceOpen}>
@@ -439,7 +439,7 @@ export function UnderstandWorkspace({ project }: { project: ProjectDetail }) {
 
         {/* RIGHT · inspector */}
         {xl && (
-          <aside className="border-l border-line-soft bg-ink-925/60 xl:sticky xl:top-[77px] xl:max-h-[calc(100dvh-77px)] xl:overflow-y-auto" aria-label="Inspector">
+          <aside className="border-l border-line-soft bg-ink-925/60 xl:sticky xl:top-14 xl:max-h-[calc(100dvh-56px)] xl:overflow-y-auto" aria-label="Inspector">
             {inspector}
           </aside>
         )}
@@ -449,7 +449,7 @@ export function UnderstandWorkspace({ project }: { project: ProjectDetail }) {
         <AnimatePresence>
           {selection && (
             <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="absolute inset-0 bg-ink-950/70" onClick={() => select(null)} />
+              <div className="absolute inset-0 bg-black/25" onClick={() => select(null)} />
               <motion.aside
                 role="dialog"
                 aria-label="Inspector"

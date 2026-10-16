@@ -106,7 +106,7 @@ def _project_summary(s: Session, p: Project) -> dict[str, Any]:
 
 def _project_detail(s: Session, p: Project) -> dict[str, Any]:
     out = _project_summary(s, p)
-    latest_job = {kind: s.scalars(select(Job).where(Job.project_id == p.id, Job.kind == kind).order_by(Job.created_at.desc())).first() for kind in ("analysis", "compile")}
+    latest_job = {kind: s.scalars(select(Job).where(Job.project_id == p.id, Job.kind == kind).order_by(Job.created_at.desc())).first() for kind in ("analysis", "compile", "change")}
     out.update(
         {
             "narration": p.narration,
@@ -114,6 +114,7 @@ def _project_detail(s: Session, p: Project) -> dict[str, Any]:
             "workflow": _workflow_dict(_latest_workflow(s, p.id)),
             "analysis_job": _job_dict(latest_job["analysis"]),
             "compile_job": _job_dict(latest_job["compile"]),
+            "change_job": _job_dict(latest_job["change"]),
             "sample_source": {"title": SAMPLE_NARRATION_TITLE, "transcript": SAMPLE_TRANSCRIPT, "scenes": SAMPLE_SCENES, "duration": 60} if p.origin == "sample" else None,
         }
     )
@@ -404,6 +405,22 @@ def save_workflow(project_id: str, body: SaveWorkflow, s: Session = Depends(get_
     p.updated_at = utcnow()
     s.commit()
     return _project_detail(s, p)
+
+
+class ChangeRequest(BaseModel):
+    instruction: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/projects/{project_id}/workflow/change-request", status_code=202)
+def change_request(project_id: str, body: ChangeRequest, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """Queue a small, model-assisted edit of the current workflow. The result is a new version to review."""
+    p = _get_project(s, project_id)
+    if not _latest_workflow(s, p.id):
+        raise HTTPException(400, "This project has no workflow yet.")
+    if p.status in ("analyzing", "compiling"):
+        raise HTTPException(409, "A job is already running for this project.")
+    job_id = jobs.start_change(p.id, body.instruction.strip())
+    return _job_dict(s.get(Job, job_id))
 
 
 @router.post("/projects/{project_id}/workflow/approve")

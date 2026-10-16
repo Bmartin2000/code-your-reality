@@ -196,6 +196,7 @@ class ModelStatus:
     vision: bool
     error: str | None = None
     available_models: list[str] | None = None
+    thinking: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -261,26 +262,27 @@ class OllamaProvider:
         installed = self.model in names or f"{self.model}:latest" in names
         if not installed:
             return ModelStatus(True, self.url, self.model, False, False, f"Model '{self.model}' is not installed. Run: ollama pull {self.model}", names)
-        vision = False
+        caps: list[str] = []
         try:
             info = httpx.post(f"{self.url}/api/show", json={"model": self.model}, timeout=10).json()
-            vision = "vision" in (info.get("capabilities") or [])
+            caps = list(info.get("capabilities") or [])
         except Exception:
             pass
-        return ModelStatus(True, self.url, self.model, True, vision, None, names)
+        return ModelStatus(True, self.url, self.model, True, "vision" in caps, None, names, "thinking" in caps)
 
     def _chat(self, system: str, user: str, schema: dict[str, Any], images: list[str] | None = None) -> dict[str, Any]:
         message: dict[str, Any] = {"role": "user", "content": user}
         if images:
             message["images"] = images
-        body = {
+        body: dict[str, Any] = {
             "model": self.model,
             "messages": [{"role": "system", "content": system}, message],
             "format": schema,
             "stream": False,
-            "think": False,
             "options": {"temperature": self.temperature, "num_ctx": 16384},
         }
+        if self.status().thinking:
+            body["think"] = False  # structured extraction doesn't need visible reasoning; only sent to models that support the flag
         try:
             resp = httpx.post(f"{self.url}/api/chat", json=body, timeout=self.timeout)
         except httpx.TimeoutException as exc:
@@ -342,3 +344,16 @@ class OllamaProvider:
             schema_pass_b(pass_a, len(sources), n_frames),
         )
         return {**pass_a, "rules": pass_b.get("rules") or [], "actions": pass_b.get("actions") or []}
+
+    def propose_change(self, definition: Any, instruction: str) -> dict[str, Any]:
+        """Ask for a few constrained operations implementing one small customer request."""
+        from . import changes
+
+        status = self.status()
+        if not status.reachable or not status.installed:
+            raise ModelUnavailable(status.error or "Model unavailable.")
+        return self._chat(
+            changes.PROMPT,
+            f"CURRENT WORKFLOW:\n{changes.describe(definition)}\n\nCUSTOMER REQUEST:\n{instruction}\n\nReturn the JSON object.",
+            changes.schema(definition),
+        )

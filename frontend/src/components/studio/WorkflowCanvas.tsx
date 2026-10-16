@@ -11,10 +11,10 @@ const GX = 56
 const GY = 22
 
 const KIND = {
-  start: { label: 'Start', icon: Play, color: '#9fc5e8' },
-  action: { label: 'Action', icon: Zap, color: '#C5F477' },
-  state: { label: 'State', icon: Repeat2, color: '#c9b6f2' },
-  end: { label: 'Outcome', icon: Flag, color: '#8DE1B0' },
+  start: { label: 'Start', icon: Play, color: '#0071E3' },
+  action: { label: 'Action', icon: Zap, color: '#0071E3' },
+  state: { label: 'State', icon: Repeat2, color: '#7D4CDB' },
+  end: { label: 'Outcome', icon: Flag, color: '#1D8A3E' },
 }
 
 /** Rules that fire around a stage: guards/effects on its action's event, plus invariants on create. */
@@ -129,13 +129,13 @@ export function WorkflowCanvas({
               : `M${a.x + W + pad} ${a.y + H / 2 + pad} C ${a.x + W + pad + GX / 2} ${a.y + H / 2 + pad}, ${b.x + pad - GX / 2} ${b.y + H / 2 + pad}, ${b.x + pad} ${b.y + H / 2 + pad}`
             return (
               <g key={`${from}-${to}`}>
-                <path d={d} fill="none" stroke={active ? '#C5F477' : '#2D3633'} strokeWidth={active ? 1.5 : 1.2} style={{ transition: 'stroke 200ms' }} />
-                {active && !reduce && <path d={d} fill="none" stroke="#C5F477" strokeWidth="1.5" strokeDasharray="2 10" className="animate-dash" opacity="0.9" />}
+                <path d={d} fill="none" stroke={active ? '#0071E3' : '#D2D2D7'} strokeWidth={active ? 1.5 : 1.2} style={{ transition: 'stroke 200ms' }} />
+                {active && !reduce && <path d={d} fill="none" stroke="#0071E3" strokeWidth="1.5" strokeDasharray="2 10" className="animate-dash" opacity="0.9" />}
                 <circle
                   cx={vertical ? b.x + W / 2 + pad : b.x + pad}
                   cy={vertical ? b.y + pad : b.y + H / 2 + pad}
                   r="2.5"
-                  fill={active ? '#C5F477' : '#3A4542'}
+                  fill={active ? '#0071E3' : '#C7C7CC'}
                 />
               </g>
             )
@@ -170,7 +170,7 @@ export function WorkflowCanvas({
               className={cn(
                 'absolute flex flex-col justify-between rounded-xl border px-3.5 py-3 text-left transition-[border-color,background-color,box-shadow] duration-200',
                 selected
-                  ? 'border-accent bg-[#151b12] shadow-[0_0_0_3px_rgba(197,244,119,0.12)]'
+                  ? 'border-accent bg-[#F2F7FE] shadow-[0_0_0_3px_rgba(0,113,227,0.12)]'
                   : related
                     ? 'border-accent/40 bg-ink-850'
                     : 'border-line bg-ink-900 hover:border-fg-subtle/60',

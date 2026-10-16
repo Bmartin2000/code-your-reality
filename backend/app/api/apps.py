@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import csv
+import io
+import json
+import zipfile
+
 from fastapi import APIRouter, Body, Depends
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -76,3 +82,37 @@ def seed(slug: str, s: Session = Depends(get_session)) -> dict[str, Any]:
 @router.post("/{slug}/reset")
 def reset(slug: str, s: Session = Depends(get_session)) -> dict[str, Any]:
     return {"deleted": AppRuntime(s, get_app(s, slug)).reset()}
+
+
+@router.get("/{slug}/export")
+def export(slug: str, s: Session = Depends(get_session)) -> Response:
+    """Download the application: its compiled definition, every record (JSON + CSV) and a short guide."""
+    app = get_app(s, slug)
+    rt = AppRuntime(s, app)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("manifest.json", json.dumps(app.manifest, indent=2, ensure_ascii=False))
+        everything: dict[str, Any] = {}
+        for e in app.manifest["entities"]:
+            rows = rt.list(e["key"])
+            everything[e["key"]] = rows
+            out = io.StringIO()
+            cols = [f["key"] for f in e["fields"]]
+            w = csv.writer(out)
+            w.writerow(["id", "code", *[f["label"] for f in e["fields"]]])
+            for r in rows:
+                w.writerow([r["id"], r["code"], *[(r["refs"][c]["title"] if c in r["refs"] else r["data"].get(c, "")) for c in cols]])
+            z.writestr(f"data/{e['key']}.csv", "\ufeff" + out.getvalue())  # BOM so Excel detects UTF-8
+        z.writestr("data/records.json", json.dumps(everything, indent=2, ensure_ascii=False, default=str))
+        z.writestr("history.json", json.dumps(rt.events(limit=10000), indent=2, ensure_ascii=False, default=str))
+        z.writestr(
+            "README.txt",
+            f"{app.name}\n{'=' * len(app.name)}\n\n"
+            "Exported from Reality Compiler.\n\n"
+            "manifest.json      The compiled application: data models, forms, states and business rules.\n"
+            "data/*.csv         Your records, one file per entity (opens in Excel or Google Sheets).\n"
+            "data/records.json  The same records as JSON.\n"
+            "history.json       Every operation, effect and rule rejection.\n\n"
+            "The manifest runs on the Reality Compiler runtime; it contains no executable code.\n",
+        )
+    return Response(buf.getvalue(), media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{slug}.zip"'})

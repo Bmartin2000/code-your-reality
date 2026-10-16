@@ -116,6 +116,7 @@ export const api = {
   saveWorkflow: (id: string, definition: WorkflowDefinition, baseVersion: number) =>
     request<ProjectDetail>('PUT', `/api/projects/${id}/workflow`, { definition, base_version: baseVersion }),
   approve: (id: string) => request<ProjectDetail>('POST', `/api/projects/${id}/workflow/approve`),
+  changeRequest: (id: string, instruction: string) => request<Job>('POST', `/api/projects/${id}/workflow/change-request`, { instruction }),
   compile: (id: string) => request<Job>('POST', `/api/projects/${id}/compile`),
   audit: (id: string) => request<AuditEvent[]>('GET', `/api/projects/${id}/audit`),
 
@@ -133,5 +134,6 @@ export const api = {
   transition: (slug: string, entity: string, id: string, transition: string) =>
     request<{ record: AppRecord; effects: Effect[] }>('POST', `/api/apps/${slug}/records/${entity}/${id}/transitions/${transition}`),
   seedSample: (slug: string) => request<{ created: Record<string, number> }>('POST', `/api/apps/${slug}/seed-sample`),
+  exportUrl: (slug: string) => `/api/apps/${slug}/export`,
   resetApp: (slug: string) => request<{ deleted: number }>('POST', `/api/apps/${slug}/reset`),
 }

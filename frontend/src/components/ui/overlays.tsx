@@ -66,7 +66,7 @@ export function Dialog({
       {open && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-6">
           <motion.div
-            className="absolute inset-0 bg-ink-950/75 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/25 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -79,7 +79,7 @@ export function Dialog({
             aria-modal="true"
             aria-labelledby={titleId}
             className={cn(
-              'surface-raised relative max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl p-6 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.8)] sm:rounded-2xl',
+              'surface-raised relative max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl p-6 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.16)] sm:rounded-2xl',
               wide ? 'sm:max-w-2xl' : 'sm:max-w-md',
             )}
             initial={{ opacity: 0, y: 16, scale: 0.985 }}
@@ -169,7 +169,7 @@ export function Toaster() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: 24 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="surface-raised pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl px-4 py-3 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)]"
+              className="surface-raised pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl px-4 py-3 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.16)]"
             >
               <Icon className={cn('mt-0.5 size-4 shrink-0', cls)} aria-hidden />
               <div className="min-w-0 flex-1">

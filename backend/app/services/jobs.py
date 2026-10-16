@@ -372,3 +372,79 @@ def _run_compile(job_id: str, workflow_version_id: str) -> None:
 
     compiler.run_stage("ready", ready)
     _finish(job_id, ok=True, result={"slug": slug_holder["slug"]}, project_status="ready")
+
+
+# --- Small change requests -----------------------------------------------------------------------
+
+CHANGE_STAGES: list[tuple[str, str]] = [
+    ("request_received", "Request received"),
+    ("model_interpretation", "Model interpretation"),
+    ("apply_changes", "Applying changes"),
+    ("validation", "Structured workflow validation"),
+]
+
+
+def start_change(project_id: str, instruction: str) -> str:
+    with SessionLocal() as s:
+        job = Job(project_id=project_id, kind="change", status="queued", stages=new_stages(CHANGE_STAGES), result={"instruction": instruction})
+        s.add(job)
+        s.get(Project, project_id).status = "analyzing"
+        s.commit()
+        job_id = job.id
+    _analysis_pool.submit(_run_change_safe, job_id, instruction)
+    return job_id
+
+
+def _run_change_safe(job_id: str, instruction: str) -> None:
+    try:
+        _run_change(job_id, instruction)
+    except Exception as exc:  # pragma: no cover
+        log.error("change crashed: %s", traceback.format_exc())
+        _finish(job_id, ok=False, error=f"Unexpected error: {exc}", project_status="needs_review")
+
+
+def _run_change(job_id: str, instruction: str) -> None:
+    from ..pipeline import changes
+
+    t = StageTracker(job_id)
+    _save(job_id, lambda j, _p: setattr(j, "status", "running"))
+    with SessionLocal() as s:
+        project_id = s.get(Job, job_id).project_id
+        latest = s.scalars(select(WorkflowVersion).where(WorkflowVersion.project_id == project_id).order_by(WorkflowVersion.version.desc())).first()
+        base = WorkflowDefinition.model_validate(latest.definition)
+        base_version = latest.version
+    t.start("request_received")
+    t.done("request_received", f"“{instruction}” · based on workflow v{base_version}")
+
+    provider = OllamaProvider()
+    t.start("model_interpretation", f"{provider.model} · limited to {changes.MAX_OPS} small operations")
+    try:
+        answer = provider.propose_change(base, instruction)
+    except (ModelUnavailable, ValueError) as exc:
+        t.fail("model_interpretation", str(exc))
+        return _finish(job_id, ok=False, error=f"{exc} Your workflow was not changed.", project_status="needs_review")
+    t.done("model_interpretation", str(answer.get("message") or "Structured answer received")[:300])
+
+    t.start("apply_changes")
+    try:
+        new_defn, summary = changes.apply(base, answer, instruction)
+    except changes.ChangeRejected as exc:
+        t.fail("apply_changes", str(exc))
+        return _finish(job_id, ok=False, error=str(exc), project_status="needs_review")
+    t.done("apply_changes", " ".join(summary)[:600], operations=len(summary))
+
+    t.start("validation")
+    errors = [i.to_dict() for i in validate(new_defn) if i.severity == "error"]
+    if errors:
+        msg = "The change would make the workflow invalid: " + errors[0]["message"]
+        t.fail("validation", msg)
+        return _finish(job_id, ok=False, error=msg + " Your workflow was not changed.", project_status="needs_review")
+    with SessionLocal() as s:
+        definition = new_defn.model_dump(mode="json")
+        definition["version"] = base_version + 1
+        s.add(WorkflowVersion(project_id=project_id, version=base_version + 1, definition=definition, source="change_request"))
+        record_audit(s, project_id, actor="model", action="change_request", target_kind="workflow", target_id=new_defn.id,
+                     summary=f"Change requested: “{instruction}” → {' '.join(summary)}"[:1000])
+        s.commit()
+    t.done("validation", f"Workflow v{base_version + 1} ready for review")
+    _finish(job_id, ok=True, result={"instruction": instruction, "summary": summary, "version": base_version + 1}, project_status="needs_review")

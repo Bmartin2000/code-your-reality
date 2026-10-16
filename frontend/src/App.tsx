@@ -13,6 +13,8 @@ const RecentApps = lazy(() => import('./pages/studio/RecentApps'))
 const Settings = lazy(() => import('./pages/studio/Settings'))
 const ProjectLayout = lazy(() => import('./pages/studio/project/ProjectLayout'))
 const ProjectHome = lazy(() => import('./pages/studio/project/ProjectHome'))
+const ProjectFlow = lazy(() => import('./pages/studio/project/ProjectFlow'))
+const RecordAgain = lazy(() => import('./pages/studio/project/RecordAgain'))
 const Review = lazy(() => import('./pages/studio/project/Review'))
 const Compile = lazy(() => import('./pages/studio/project/Compile'))
 const EvidencePage = lazy(() => import('./pages/studio/project/EvidencePage'))
@@ -32,7 +34,7 @@ export default function App() {
     <>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-ink-950"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-on-accent"
       >
         Skip to content
       </a>
@@ -48,7 +50,9 @@ export default function App() {
             <Route path="apps" element={<RecentApps />} />
             <Route path="settings" element={<Settings />} />
             <Route path="projects/:id" element={<ProjectLayout />}>
-              <Route index element={<ProjectHome />} />
+              <Route index element={<ProjectFlow />} />
+              <Route path="record" element={<RecordAgain />} />
+              <Route path="advanced" element={<ProjectHome />} />
               <Route path="review" element={<Review />} />
               <Route path="compile" element={<Compile />} />
               <Route path="evidence" element={<EvidencePage />} />

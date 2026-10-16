@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # Model provider (Ollama-compatible)
     ollama_url: str = "http://127.0.0.1:11434"  # 127.0.0.1 avoids slow IPv6 fallback on Windows
-    ollama_model: str = "qwen3.5:4b"
+    ollama_model: str = "gemma4:e4b"
     ollama_timeout_seconds: int = 600
     model_temperature: float = 0.1
 

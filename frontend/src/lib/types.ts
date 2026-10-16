@@ -60,7 +60,7 @@ export interface JobStage {
 export interface Job {
   id: string
   project_id: string
-  kind: 'analysis' | 'compile'
+  kind: 'analysis' | 'compile' | 'change'
   status: 'queued' | 'running' | 'succeeded' | 'failed'
   stages: JobStage[]
   result: Record<string, unknown> | null
@@ -79,7 +79,7 @@ export interface Issue {
 export interface WorkflowEnvelope {
   id: string
   version: number
-  source: 'ai_extraction' | 'sample' | 'template' | 'blank' | 'human_edit'
+  source: 'ai_extraction' | 'sample' | 'template' | 'blank' | 'human_edit' | 'change_request'
   approved: boolean
   approved_at: string | null
   definition: WorkflowDefinition
@@ -108,6 +108,7 @@ export interface ProjectDetail extends ProjectSummary {
   workflow: WorkflowEnvelope | null
   analysis_job: Job | null
   compile_job: Job | null
+  change_job: Job | null
   sample_source: SampleSource | null
 }
 

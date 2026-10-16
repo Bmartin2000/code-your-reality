@@ -1,40 +1,38 @@
-# Jury demo script (60–90 seconds)
+# Demo video script (about 90 seconds)
 
-**Setup before you go on stage:** start the backend and frontend. Clear old demo projects if you want a clean list. Open http://localhost:5173 in a 1440px-wide window. For the optional live-AI coda, have one Path B project already analyzed, because local models take minutes.
-
----
-
-### Scene 1: Reality (0:00–0:12)
-- On the homepage hero, let the animation run once: a rental counter is recorded, structure is detected, and the app assembles.
-- Say: *"Every business already has a specification. It's the way people actually work. We start there."*
-- Click **Experience the Demo**.
-
-### Scene 2: Structure (0:12–0:28)
-- The workspace opens. Point to the label: *"This is a predefined sample, clearly marked. Real uploads go through the same screens with a local model."*
-- Press play on the storyboard. Point at the entities that were found: Customer, Item, Rental.
-- Click the rule **"An unavailable item cannot be rented."** The transcript highlights 00:09, where the clerk says it.
-- Say: *"Every rule is traceable back to the moment it was observed."*
-
-### Scene 3: Human verification (0:28–0:42)
-- Click **Confirm 26 with evidence**. Then **Verify & approve**.
-- Point to the AI inferences that are left. **Reject** "Late returns may incur a fee" because nobody said that, and confirm the rest.
-- Say: *"The AI proposes. A person decides. Rejected ideas never reach the software."*
-- Click **Approve workflow**.
-
-### Scene 4: Compilation (0:42–0:55)
-- Click **Compile Application**. The compiler core lights up layer by layer, the stages report real measurements, and the assembly panel shows navigation, data models, forms and rules.
-- Say: *"No code is generated. The approved definition compiles into a manifest for a safe runtime."*
-- Click **Open application**.
-
-### Scene 5: Operation (0:55–1:20)
-- Click **Add sample records**, then **New rental**. Choose the Canon EOS R6, a customer, a return date and a deposit of 250, and click Create. The toast shows *availability: available → rented*.
-- Open **New rental** again with the same camera. The server refuses: *"already has an open rental… An item cannot have two active rentals."*
-- Click **Complete return**. The camera is *available* again. Refresh the page to show the records persist.
-
-### Scene 6: The point (1:20–1:30)
-- Click **Source workflow v4** in the app header to jump back to the evidence, and show the observation and the working app together.
-- Close with: **"We didn't start with a specification. We started with reality."**
+Screen recording with a voice-over. **[Screen]** is what to show; *Narration* is what to say.
+Before recording: start the backend and frontend, and have one real analysis already finished (the tool-lending clip). Local AI analysis takes several minutes, so cut that wait in the edit.
 
 ---
 
-**Optional live-AI coda (if time allows):** open the pre-analyzed Path B project (for example, the tool-lending workshop clip). Show the job stages, the transcript, the sampled frames, and a rule with its cited timestamp, all produced by a local open-weight model.
+### 1. The problem (0:00–0:10)
+**[Screen]** The landing page hero, "Show your work. Get your app."
+*Narration:* "Small businesses run on paper slips, whiteboards and habits. Custom software means writing a specification first — so most never get any."
+
+### 2. Record (0:10–0:22)
+**[Screen]** On a phone: Studio → **New app** → **Record with camera**. A short clip at a counter: picking an item, writing a slip, flipping a tag.
+*Narration:* "With Reality Compiler you don't describe your workflow. You show it — film the job once and say what matters."
+
+### 3. Local AI understands (0:22–0:38)
+**[Screen]** The progress screen ("Listening to what you said", "Looking at the video", "Understanding your process"). Then cut to the finished review.
+*Narration:* "Google's open Gemma 4 model runs on this laptop through Ollama. It reads the transcript and the video frames and finds what you track, how things move along, and your rules. The video never leaves the machine."
+
+### 4. You stay in control (0:38–0:52)
+**[Screen]** The plain-language review. Point at a rule's quote, *"You said at 0:34: 'A tool can only be lent to one member at a time.'"* Leave out a rule flagged "AI guess". Tap **Build my app**.
+*Narration:* "Every suggestion shows the moment it came from. Anything the AI only guessed is flagged. Nothing goes into the app without your OK."
+
+### 5. A real app (0:52–1:12)
+**[Screen]** "Your app is ready" → **Open my app**. Add a rental: the item flips to *rented*. Try to rent it again, and the server refuses with the rule's own words. Complete the return, and the item is *available* again.
+*Narration:* "This isn't a mock-up. Records are saved, and the rules are enforced by the server. You can't rent the same camera twice."
+
+### 6. It keeps up (1:12–1:25)
+**[Screen]** Back on the ready screen: type *"Customers should also give an email address"* in **Ask for a small change**, then show the new field in the review. Show **Download** and the online link.
+*Narration:* "When something changes, record again or ask in one sentence. Download your data any time. Support comes from real people at Integrint."
+
+### 7. Close (1:25–1:30)
+**[Screen]** The landing page pricing section, then the logo.
+*Narration:* "We didn't start with a specification. We started with reality. Reality Compiler."
+
+---
+
+**Honesty notes for the edit:** label the prepared demo project as an example if it appears on screen (the UI already shows "Example"). Don't speed up the progress screen in a way that suggests the analysis is instant: use a visible cut or a "several minutes later" caption.

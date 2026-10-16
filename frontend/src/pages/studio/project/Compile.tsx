@@ -207,7 +207,7 @@ export default function Compile() {
                       ))}
                   </ul>
                 )}
-                <Link to={`/studio/projects/${project.id}`} className="mt-3 inline-block text-[13px] text-fg underline-offset-4 hover:underline">
+                <Link to={`/studio/projects/${project.id}/advanced`} className="mt-3 inline-block text-[13px] text-fg underline-offset-4 hover:underline">
                   Fix in the workspace
                 </Link>
               </div>

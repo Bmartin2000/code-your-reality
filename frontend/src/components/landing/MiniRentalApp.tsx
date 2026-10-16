@@ -59,10 +59,10 @@ export function MiniRentalApp() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-ink-900 shadow-[0_40px_100px_-40px_rgba(0,0,0,0.9)]">
+    <div className="overflow-hidden rounded-2xl border border-line bg-ink-900 shadow-[0_40px_100px_-40px_rgba(0,0,0,0.18)]">
       <div className="flex items-center justify-between border-b border-line-soft px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="flex size-5 items-center justify-center rounded bg-accent font-mono text-[10px] font-semibold text-ink-950">E</span>
+          <span className="flex size-5 items-center justify-center rounded bg-accent font-mono text-[10px] font-semibold text-on-accent">E</span>
           <span className="text-[13px] font-medium">Equipment Rental</span>
         </div>
         <button onClick={reset} className="inline-flex items-center gap-1 text-[11.5px] text-fg-subtle hover:text-fg" aria-label="Reset preview">
@@ -103,7 +103,7 @@ export function MiniRentalApp() {
               ))}
             </select>
           </div>
-          <button onClick={start} className="mt-2 h-9 w-full rounded-full bg-accent text-[13px] font-medium text-ink-950 transition-transform active:scale-[0.98]">
+          <button onClick={start} className="mt-2 h-9 w-full rounded-full bg-accent text-[13px] font-medium text-on-accent transition-transform active:scale-[0.98]">
             Start rental
           </button>
         </div>

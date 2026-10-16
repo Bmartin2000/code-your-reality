@@ -130,7 +130,7 @@ def normalize(raw: dict[str, Any], *, duration: float | None, frame_times: list[
             if not isinstance(rf, dict) or not _s(rf.get("name")):
                 continue
             fkey = to_key(rf["name"], "field")
-            if fkey == "id":
+            if fkey == "id" or (rf.get("type") != "reference" and fkey in (f"{e['key']}_id", f"{e['key']}_number", f"{e['key']}_no")):
                 continue  # the runtime assigns identifiers itself
             label_name = rf["name"]
             if rf.get("type") == "reference" and fkey.endswith("_id") and len(fkey) > 3:

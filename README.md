@@ -3,7 +3,9 @@
 **From reality to runnable software.**
 *Don't describe your workflow. Show it.*
 
-Reality Compiler turns a recorded business process into a working application. You record or upload a short demonstration of how work is done. A local open-weight AI model proposes the process structure: entities, states, actions and business rules, each traced back to the second of the recording it came from. A person confirms or corrects every finding. The approved workflow then compiles into a schema-driven application that actually runs: records persist, and the server enforces the business rules on every operation.
+Reality Compiler turns a recorded business process into a working application. A small business owner films how the work is done with a phone. **Google's open-weight Gemma 4 model, running locally through Ollama**, proposes the process structure: what is tracked, how things move along, and the business rules. Each finding is traced back to the second of the recording it came from. The owner keeps or drops each finding in plain language. The approved workflow then compiles into a schema-driven application that actually runs: records persist, and the server enforces the business rules on every operation. When the business changes, the owner records again or asks for a small change in one sentence.
+
+**Customer journey:** see how it works → pick a plan (free pilot) → record with the phone camera → the AI analyzes it → review in plain language → the app is built → open it with a link or download it → record again or request small changes → support from Integrint.
 
 ![Reality Compiler landing page: a recorded rental counter becomes structured rules and a running application](docs/screenshots/landing-hero.png)
 
@@ -11,12 +13,14 @@ Reality Compiler turns a recorded business process into a working application. Y
 
 | | |
 | --- | --- |
-| ![Understand workspace: evidence, workflow structure and the rule inspector, with the cited transcript segment highlighted](docs/screenshots/studio-understand.png) | ![Verification: every AI finding is confirmed or rejected before approval](docs/screenshots/studio-verify.png) |
-| **Understand**: evidence on the left, structure in the center, inspector on the right. Selecting a rule highlights the narration it came from. | **Verify**: nothing compiles until a person confirms or rejects each finding. |
-| ![Compile: six measured compiler stages and the application assembly](docs/screenshots/studio-compile.png) | ![Generated rental application dashboard with live availability and the activity log](docs/screenshots/app-overview.png) |
-| **Compile**: real stage results with measured timings, plus the assembly built from the manifest. | **Operate**: the generated app, with records persisted on the server. |
-| ![The server refuses a second rental of an item that is already rented](docs/screenshots/app-rule-enforced.png) | ![Mobile layouts of the landing page and the generated app](docs/screenshots/mobile-app.png) |
-| **Rules are enforced server-side**: renting an item twice is refused, and the reason names the rule. | **Responsive**: Studio and generated apps adapt down to 390px. |
+| ![Phone: record the process with the camera or upload a video](docs/screenshots/mobile-record.png) | ![Phone: the app is ready, with open, download, link, record again and small-change options](docs/screenshots/mobile-ready.png) |
+| **Record** on the phone: one big camera button that opens the native camera. | **Ready**: open the app, download it, share the link, record again, or ask for a small change. |
+| ![Plain-language review: what the app tracks, how things move, rules with the quote they came from](docs/screenshots/studio-review.png) | ![The app is ready](docs/screenshots/studio-ready.png) |
+| **Review in plain language**: keep or leave out each finding. AI guesses are flagged. | **Build**: one button compiles the confirmed workflow into a live app. |
+| ![Generated rental application dashboard with live availability and the activity log](docs/screenshots/app-overview.png) | ![The server refuses a second rental of an item that is already rented](docs/screenshots/app-rule-enforced.png) |
+| **Operate**: the generated app, with records persisted on the server. | **Rules are enforced server-side**: renting an item twice is refused, and the reason names the rule. |
+| ![Advanced editor: evidence, workflow structure and the rule inspector, with the cited transcript segment highlighted](docs/screenshots/studio-advanced.png) | ![Generated app on a phone](docs/screenshots/mobile-app.png) |
+| **Advanced editor** (optional): evidence, process canvas and structured editors for power users. | **Generated apps are mobile-ready.** |
 
 Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` while both dev servers are running.
 
@@ -34,8 +38,11 @@ Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` 
 
 ## What works today
 
-- **Cinematic landing page** with a deterministic hero animation of the core idea (reality → understanding → software), a scroll-driven narrative, and an **interactive in-page rental preview**. The preview runs the same rule kinds in the browser on throwaway data, and is labelled as such.
-- **Studio**: overview, projects, a guided creation flow, recent applications, and an engine/settings page that reports live backend status.
+- **Landing page** (light, Apple-inspired): how it works in four steps, an **interactive in-page rental preview** (the same rule kinds, run in the browser on throwaway data, and labelled as such), **monthly plans**, and **support by Integrint**.
+- **Simple Studio** built mobile-first: Home (your apps), New app, My apps, Account (plan, Integrint support, AI engine status). On phones it uses a bottom tab bar.
+- **Simple flow per app:** a friendly progress screen while the AI works → a plain-language review (keep or leave out each entity, field, button and rule, with the quote it came from) → **Build my app** → a ready screen with **Open my app**, **Download** (ZIP: definition, CSV and JSON data, history), the online link (copy and share), **Record again**, and **Ask for a small change**.
+- **Small change requests:** a sentence of up to 300 characters ("Customers should also give an email address") becomes at most five constrained edits (add, rename or remove a field, make it required, add an option, add or remove a rule). They come back for review as a new version. Large or unclear requests are refused, not guessed.
+- **Record again:** a new video creates a new workflow version. The live app keeps running until the update is confirmed, and its records are kept.
 - **Capture**: drag-and-drop upload with client and server validation (container magic bytes, size, duration), upload progress with cancel, preview, remove/replace, **browser recording** (camera or screen plus microphone) with permission and error handling, an optional written narration, a privacy notice, and transcript editing.
 - **Observe**: a real background job with persisted stages: media received → audio extraction → transcription → frame sampling → model interpretation (two passes) → structured validation. The UI shows exactly what the backend reports. There are no invented percentages or time estimates.
 - **Understand**: a three-panel workspace. Evidence (video or storyboard, frames, transcript) on the left, workflow structure (process canvas, entities, lifecycle, rules, actions, open questions) in the center, and a contextual **inspector** with structured editors on the right. Edits auto-save as new workflow versions.
@@ -60,7 +67,7 @@ The same runtime runs **any** workflow that compiles. The AI pipeline was tested
 
 ## Two demo paths
 
-**Path A: Instant guided demo (no AI model needed).** Choose *Experience the Demo* on the homepage or Studio. This loads a **predefined example**: a narrated rental-counter walkthrough shown as an illustrated storyboard, with an authored workflow. The UI marks it "Sample data" everywhere and never presents it as model output. Review it, compile it, operate it.
+**Path A: Instant guided demo (no AI model needed).** Choose *Try the demo* on the homepage or in the Studio. This loads a **predefined example**: a narrated rental-counter walkthrough, shown as an illustrated storyboard in the advanced editor, with an authored workflow. The UI marks it "Example" everywhere and never presents it as model output. Review it, build it, operate it.
 
 **Path B: Analyze my workflow.** Upload or record real media. The backend runs FFmpeg, faster-whisper and a local Ollama model. If the model is unavailable, or its answer can't be mapped to a supported workflow, the job fails and says why, and you can retry or continue from the rental template or a blank workflow.
 
@@ -121,7 +128,7 @@ docs/demo-script.md        60–90 s jury walkthrough
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS v4, React Router, Motion for React, TanStack Query, Zustand, React Hook Form, Zod, Lucide icons, Geist / Instrument Serif / IBM Plex Mono (self-hosted via Fontsource)
 - **Backend:** Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, SQLite (WAL), FFmpeg via `imageio-ffmpeg` (or system FFmpeg), faster-whisper, Ollama HTTP API
-- **AI model used in development and testing:** `qwen3.5:4b` via Ollama, an open-weight model that reports vision capability. Any Ollama model can be configured. The backend checks that the model is installed and whether it supports vision, then adapts or reports the problem.
+- **AI model (default): `gemma4:e4b`, Google's open-weight Gemma 4**, via Ollama. It's multimodal: the sampled video frames and the transcript go into the same request. It's used for both the two-pass extraction and the small change requests. `qwen3.5:4b` was also tested and still works (`RC_OLLAMA_MODEL`). The backend checks that the model is installed and which capabilities it has (vision, thinking), then adapts or reports the problem.
 - **Tests:** pytest, Vitest and React Testing Library, Playwright
 
 ## Setup (Windows PowerShell)
@@ -148,7 +155,7 @@ Open http://localhost:5173. The Vite dev server proxies `/api` to the backend.
 
 ```powershell
 # 3. Optional, for Path B: a local multimodal model
-ollama pull qwen3.5:4b
+ollama pull gemma4:e4b
 # then check Studio → Settings shows the model as installed with vision
 ```
 
@@ -159,44 +166,56 @@ macOS/Linux: use `.venv/bin/python` instead of `.\.venv\Scripts\python.exe`.
 ## Running the guided demo
 
 1. Start both servers and open http://localhost:5173.
-2. Click **Experience the Demo**.
-3. Play the storyboard and click a rule to see its cited narration highlighted.
-4. Click **Confirm N with evidence**, then **Verify & approve**. Decide the remaining AI inferences (reject "Late returns may incur a fee"), then **Approve workflow**.
-5. Click **Compile Application**, then **Open application**.
-6. Click **Add sample records**. Create a rental for the Canon EOS R6, and its availability flips to *rented*. Try renting it again, and the server refuses. Click **Complete return**, and the item is available again. Reload the page: everything persists.
+2. Click **Try the demo**. The plain-language review opens.
+3. Leave out the AI-guessed rule "Late returns may incur a fee", then click **Build my app**.
+4. On the ready screen, click **Open my app**. (Download, the online link, Record again and small changes are offered there too.)
+5. Click **Add sample records**. Create a rental for the Canon EOS R6, and its availability flips to *rented*. Try renting it again, and the server refuses. Click **Complete return**, and the item is available again. Reload the page: everything persists.
+6. Optional: open **⋯ → Advanced editor** to see the storyboard, transcript and evidence linking. Clicking a rule highlights the narration it came from.
 
 ## Running AI processing (Path B)
 
 1. Make sure Ollama is running and the configured model is installed (Studio → Settings).
-2. Studio → **New Compilation**: upload a short clip (MP4/MOV/WebM/MKV, ≤ 200 MB, ≤ 5 min) or record your camera or screen, and optionally add a narration.
-3. Click **Upload and analyze** and watch the real job stages. On a laptop CPU/GPU, `qwen3.5:4b` took about 6.5 minutes of model time for a 48-second clip in our tests (two constrained passes; the second, with the rule grammar, is the slower one). Larger models are slower but more accurate.
+2. Studio → **New app**: record with the camera (on a phone it opens the native camera) or upload a short clip (MP4/MOV/WebM/MKV, ≤ 200 MB, ≤ 5 min) or record your camera or screen, and optionally add a narration.
+3. Click **Create my app** and watch the real job stages.
+
+**Measured on the development laptop** (Intel Core Ultra 7 155U, 15 GB RAM, CPU only), with a 48-second narrated clip about lending tools in a community workshop. This deliberately isn't the rental domain the sample uses:
+
+| Model | Analysis time | Result |
+| --- | --- | --- |
+| `gemma4:e4b` (default) | ~8.4 min | Tool, Member and Loan with correct references; loan lifecycle; 9 rules, all citing transcript timestamps; enforceable deposit and date rules |
+| `qwen3.5:4b` | ~6.5 min | Entities found, but the lifecycle was attached to the wrong entity |
+| `gemma4:e4b`, change request | 50 s | "Members should also give an email address, and it is required" became one new required field |
+| `gemma4:e4b`, oversized request | 46 s | "Build me a complete accounting system…" was refused, and nothing was changed |
 4. Review the proposal in the workspace. Items the model cited show their transcript quote and timestamp, and claims of direct evidence without a citation are downgraded to *AI inference*. Correct whatever is wrong, approve, and compile.
 
 ### Choosing a model
 
-The default is `qwen3.5:4b`, a good fit for a laptop without a dedicated GPU (development machine: Intel Core Ultra 7 155U, 15 GB RAM, CPU inference). There, one analysis takes several minutes, and the model gets entities and lifecycles right more reliably than rules. On a machine with a GPU with 12 GB+ VRAM, or plenty of RAM and patience, a larger vision model from the Ollama library gives better rule mapping:
+The default `gemma4:e4b` (about 7 GB with its vision projector) runs on a 16 GB laptop without a GPU. Any Ollama model whose capabilities include `vision` can be configured:
 
 ```powershell
-ollama pull <larger-vision-model>              # any Ollama model whose capabilities include "vision"
-$env:RC_OLLAMA_MODEL = "<larger-vision-model>" # or set RC_OLLAMA_MODEL in .env
+ollama pull <vision-model>
+$env:RC_OLLAMA_MODEL = "<vision-model>"   # or set RC_OLLAMA_MODEL in .env
 ```
 
-Studio → Settings shows whether the configured model is installed and has vision. Expect roughly 2× the analysis time per doubling of parameters on CPU. The guided demo (Path A) doesn't use a model at all.
+Studio → Account → AI engine shows whether the configured model is installed and has vision. The guided demo (Path A) doesn't use a model at all.
 
 ## Testing
 
 ```powershell
-cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 10 tests: rental cycle, rules, uploads, failure handling, normalization
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 15 tests: rental cycle, rules, uploads, failure handling, normalization, change requests, export
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
 cd frontend; npm test                                          # 9 Vitest tests: schema helpers, workflow ops, SchemaForm
-cd frontend; npx playwright install chromium; npm run test:e2e # 15 Playwright tests: full guided journey + desktop/mobile smoke
+cd frontend; npx playwright install chromium; npm run test:e2e # 16 Playwright tests: full guided journey + advanced editor + desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.
 
 ## Limitations (honest)
 
-- **Model quality depends on the model you run.** With a 4B model, extraction of entities and lifecycles is usually good, but rule mapping is less consistent. Rules that can't be mapped to an enforceable kind are kept as documented notes for you to fix in the inspector. Nothing is compiled without human review.
+- **Plans and billing:** the monthly plans are shown, but online payment is not implemented in this build. Every plan starts as a free pilot, as the pricing page says.
+- **Online link:** the app link works for anyone who can reach the server. In this local build that means your own computer or network. Public hosting is a deployment step that isn't included here.
+
+- **Model quality depends on the model you run.** With small local models, extraction of entities and lifecycles is usually good, but rule mapping is less consistent (Gemma 4 E4B mapped 2 of 9 rules to enforceable kinds on our test clip). Rules that can't be mapped to an enforceable kind are kept as documented notes for you to fix in the inspector. Nothing is compiled without human review.
 - **Transcription is English-first** with the default `base` Whisper model. Choose a larger or multilingual model with `RC_WHISPER_MODEL`.
 - **Rule language is intentionally small:** preconditions on linked records, exclusivity, effects, minimums and date order. Arbitrary logic such as fees or calculations is recorded as notes, not enforced.
 - **Single-process deployment.** Rule checks are serialized per application with an in-process lock. Running several backend workers would need database-level locking.

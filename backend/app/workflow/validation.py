@@ -233,6 +233,8 @@ def _validate_rule(defn: WorkflowDefinition, r, err, warn) -> None:
             err(f"Rule '{r.statement}': {entity.label} has no field '{target_key}'.", "rule", tid)
         elif p["value"] == "$today" and target.type != "date":
             err(f"Rule '{r.statement}': '$today' can only be written to a date field.", "rule", tid)
+        elif not _value_fits(target, p["value"]):
+            err(f"Rule '{r.statement}': '{p['value']}' is not a valid value for {entity.label}.{target.label}.", "rule", tid)
 
     if r.kind == "min_value":
         f = fields.get(str(p["field"]))
@@ -248,6 +250,33 @@ def _validate_rule(defn: WorkflowDefinition, r, err, warn) -> None:
             f = fields.get(str(p[k]))
             if not f or f.type != "date":
                 err(f"Rule '{r.statement}': '{p[k]}' is not a date field of {entity.label}.", "rule", tid)
+
+
+def _value_fits(field, value) -> bool:
+    """Whether a constant written by a set_field effect is valid for the target field."""
+    from datetime import date
+
+    if field.type == "date":
+        if value == "$today":
+            return True
+        try:
+            date.fromisoformat(str(value))
+            return True
+        except ValueError:
+            return False
+    if field.type in ("number", "money"):
+        try:
+            float(value)
+            return True
+        except (TypeError, ValueError):
+            return False
+    if field.type == "enum":
+        return value in field.options
+    if field.type == "boolean":
+        return isinstance(value, bool) or str(value).lower() in ("true", "false")
+    if field.type == "reference":
+        return False
+    return isinstance(value, (str, int, float))
 
 
 def _pending_items(defn: WorkflowDefinition):

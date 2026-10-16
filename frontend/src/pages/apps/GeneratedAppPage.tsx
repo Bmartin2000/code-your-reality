@@ -701,7 +701,7 @@ export default function GeneratedAppPage() {
       <header className="sticky top-0 z-30 border-b border-line-soft bg-ink-950/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent font-mono text-[12px] font-semibold text-ink-950">{a.name.slice(0, 1)}</span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent font-mono text-[12px] font-semibold text-on-accent">{a.name.slice(0, 1)}</span>
             <span className="truncate text-[14px] font-semibold tracking-[-0.01em]">{a.name}</span>
             {a.is_sample && (
               <span className="hidden items-center gap-1 rounded-full border border-warning/30 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-warning sm:inline-flex">

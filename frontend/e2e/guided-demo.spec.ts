@@ -1,33 +1,26 @@
 import { expect, test } from '@playwright/test'
 
-test('guided sample: review, approve, compile, operate a rental cycle', async ({ page }) => {
+test('guided sample: review, build, operate a rental cycle, download', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('The world is your')
-  await page.getByRole('link', { name: 'Experience the Demo' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Show your work.')
+  await page.getByRole('link', { name: 'Try the demo' }).first().click()
 
-  // Understand: sample data is labelled and evidence is shown.
-  await expect(page.getByText('Sample data').first()).toBeVisible()
-  await expect(page.getByText('Illustrated storyboard · sample')).toBeVisible()
-  await page.getByRole('button', { name: /Confirm \d+ with evidence/ }).click()
-  await expect(page.getByText(/Saved · v2/)).toBeVisible()
+  // Simple review: the example is labelled, the AI-guessed rule is left out.
+  await expect(page.getByRole('heading', { name: 'Here’s what we understood.' })).toBeVisible()
+  await expect(page.getByText('Example', { exact: true })).toBeVisible()
+  const lateFee = page.getByRole('switch', { name: /Late returns may incur a fee/ })
+  await lateFee.click()
+  await expect(lateFee).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('button', { name: 'Build my app' }).click()
 
-  // Verify: decide the remaining inferences, then approve.
-  await page.getByRole('link', { name: /Verify & approve/ }).click()
-  const pending = page.locator('li.surface')
-  await expect(pending.first()).toBeVisible()
-  while ((await pending.count()) > 0) {
-    const row = pending.first()
-    const isNote = (await row.textContent())?.includes('Late returns')
-    await row.getByRole('button', { name: isNote ? 'Reject' : 'Confirm' }).click()
-    await page.waitForTimeout(150)
-  }
-  await expect(page.getByText('Ready for approval.')).toBeVisible({ timeout: 10_000 })
-  await page.getByRole('button', { name: 'Approve workflow' }).click()
-
-  // Compile: real compiler stages, then open the generated app.
-  await page.getByRole('button', { name: 'Compile Application' }).click()
-  await expect(page.getByText('Application ready')).toBeVisible()
-  await page.getByRole('link', { name: 'Open application' }).first().click()
+  // Ready: link, download, re-record and small changes are offered.
+  await expect(page.getByRole('heading', { name: 'Your app is ready.' })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Record again' })).toBeVisible()
+  await expect(page.getByLabel('Ask for a small change')).toBeVisible()
+  const download = page.getByRole('link', { name: 'Download' })
+  const zip = await page.request.get((await download.getAttribute('href'))!)
+  expect(zip.headers()['content-type']).toBe('application/zip')
+  await page.getByRole('link', { name: 'Open my app' }).click()
 
   // Operate.
   await page.getByRole('button', { name: 'Add sample records' }).click()
@@ -44,8 +37,7 @@ test('guided sample: review, approve, compile, operate a rental cycle', async ({
 
   // The item is now rented; renting it again is rejected by the server.
   await page.getByRole('link', { name: 'Inventory' }).first().click()
-  const camera = page.getByRole('row', { name: /Canon EOS R6 body/ })
-  await expect(camera.getByText('Rented')).toBeVisible()
+  await expect(page.getByRole('row', { name: /Canon EOS R6 body/ }).getByText('Rented')).toBeVisible()
   await page.getByRole('link', { name: 'Rentals' }).first().click()
   await page.getByRole('button', { name: 'New', exact: true }).click()
   await page.getByRole('dialog').getByLabel(/^Item/).selectOption({ label: 'Canon EOS R6 body · ITE-0001 — rented' })
@@ -66,4 +58,11 @@ test('guided sample: review, approve, compile, operate a rental cycle', async ({
   await expect(page.getByRole('row', { name: /REN-0001/ }).getByText('Returned')).toBeVisible()
   await page.getByRole('link', { name: 'Inventory' }).first().click()
   await expect(page.getByRole('row', { name: /Canon EOS R6 body/ }).getByText('Available')).toBeVisible()
+})
+
+test('advanced editor is still reachable', async ({ page }) => {
+  await page.goto('/demo')
+  await page.getByRole('link', { name: 'Open the advanced editor' }).click()
+  await expect(page.getByText('Illustrated storyboard · sample')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Simple view' })).toBeVisible()
 })

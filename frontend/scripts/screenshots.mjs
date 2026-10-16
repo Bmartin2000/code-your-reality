@@ -67,17 +67,17 @@ await desktop.waitForTimeout(10_200) // hero cycle reaches the assembled, live a
 await shot(desktop, 'landing-hero')
 
 await desktop.goto(`${WEB}/studio/projects/${fresh.id}`)
+await desktop.waitForTimeout(900)
+await shot(desktop, 'studio-review')
+
+await desktop.goto(`${WEB}/studio/projects/${project.id}`)
+await desktop.waitForTimeout(1200)
+await shot(desktop, 'studio-ready')
+
+await desktop.goto(`${WEB}/studio/projects/${fresh.id}/advanced`)
 await desktop.getByRole('button', { name: /An unavailable item cannot be rented/ }).first().click()
 await desktop.waitForTimeout(900)
-await shot(desktop, 'studio-understand')
-
-await desktop.goto(`${WEB}/studio/projects/${fresh.id}/review`)
-await desktop.waitForTimeout(900)
-await shot(desktop, 'studio-verify')
-
-await desktop.goto(`${WEB}/studio/projects/${project.id}/compile`)
-await desktop.waitForTimeout(1200)
-await shot(desktop, 'studio-compile')
+await shot(desktop, 'studio-advanced')
 
 await desktop.goto(`${WEB}/apps/${slug}`)
 await desktop.waitForTimeout(1200)
@@ -99,6 +99,12 @@ const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, de
 await mobile.goto(WEB)
 await mobile.waitForTimeout(10_200)
 await shot(mobile, 'mobile-landing')
+await mobile.goto(`${WEB}/studio/new`)
+await mobile.waitForTimeout(1200)
+await shot(mobile, 'mobile-record')
+await mobile.goto(`${WEB}/studio/projects/${project.id}`)
+await mobile.waitForTimeout(1200)
+await shot(mobile, 'mobile-ready')
 await mobile.goto(`${WEB}/apps/${slug}`)
 await mobile.waitForTimeout(1200)
 await shot(mobile, 'mobile-app')
