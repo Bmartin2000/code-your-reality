@@ -218,10 +218,10 @@ Studio → Account → AI engine shows whether the configured model is installed
 ## Testing
 
 ```powershell
-cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 30 tests: sign-in and users, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 34 tests: sign-in and users, Subscription Test Mode, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
 cd frontend; npm test                                          # 9 Vitest tests: schema helpers, workflow ops, SchemaForm
-cd frontend; npx playwright install chromium; npm run test:e2e # 23 Playwright tests: first-admin setup, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
+cd frontend; npx playwright install chromium; npm run test:e2e # 24 Playwright tests: first-admin setup, Subscription Test Mode, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.
@@ -243,6 +243,7 @@ Playwright starts its own backend (:8001, temporary data directory) and Vite ser
 ## Security & privacy
 
 - **Sign-in:** the Studio API (projects, uploads, analysis, change requests, account) requires a signed-in user, so Whisper and the Ollama model can't be used anonymously. The first registered user becomes admin; after that, only admins add users unless `ALLOW_SIGNUP=true`. Passwords are hashed with PBKDF2-HMAC-SHA256 (390,000 iterations, random salt, standard library only). Sessions are random tokens in an HttpOnly, SameSite=Lax cookie (Secure over HTTPS or with `COOKIE_SECURE=true`), and only their SHA-256 hash is stored. Repeated failed sign-ins from one address are slowed down. `/health` and the generated apps stay public.
+- **Subscription Test Mode (founding admin only):** the account that registered first is pinned by its user id in a server-side record (not by role; it can't be demoted or removed). Only it can switch, under Account, to experience the app as Free or Plus. The choice is stored and logged on the server and applied to that account's requests by every existing plan check: analysis limits, app limits, Reports, Connections, Team, frame count and upgrade prompts. The workspace's real plan isn't changed, checkout is disabled while testing, and other users keep the real plan.
 - Uploads are checked by magic bytes, not by the file name or MIME type the client sends. They're size-limited while streaming and duration-limited after probing, and stored under server-generated names (the original name is display metadata only, so path traversal isn't possible).
 - FFmpeg is invoked with argument lists, never through a shell.
 - Model output, transcripts and workflow definitions are treated as untrusted. They're validated with Pydantic on the server and Zod in the client, and interpreted by a closed runtime.

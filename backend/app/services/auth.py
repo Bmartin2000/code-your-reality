@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 import threading
 import time
@@ -17,10 +18,13 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, Response
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..db import AuthSession, User, get_session
+from ..db import AuthSession, PlanTestEvent, SessionLocal, SuperAdmin, User, get_session
+
+log = logging.getLogger(__name__)
 
 COOKIE = "cyr_session"
 SESSION_DAYS = 30
@@ -99,6 +103,59 @@ def require_admin(user: User = Depends(require_user)) -> User:
     if user.role != "admin":
         raise HTTPException(403, "Only admins can do this.")
     return user
+
+
+# --- founding Super Admin and Subscription Test Mode -------------------------------------------------
+
+
+def super_admin(s: Session) -> SuperAdmin | None:
+    """The founding account. Pinned at the first registration; installs that predate this record pin
+    their earliest admin once. It never moves to another user afterwards."""
+    row = s.get(SuperAdmin, 1)
+    if row:
+        return row
+    first = s.scalars(select(User).where(User.role == "admin").order_by(User.created_at, User.id)).first()
+    if not first:
+        return None
+    try:
+        row = SuperAdmin(id=1, user_id=first.id)
+        s.add(row)
+        s.commit()
+    except IntegrityError:  # another request pinned it first
+        s.rollback()
+        row = s.get(SuperAdmin, 1)
+    return row
+
+
+def is_super_admin(s: Session, user: User | None) -> bool:
+    row = super_admin(s) if user else None
+    return bool(row and row.user_id == user.id)
+
+
+def require_super_admin(user: User = Depends(require_user), s: Session = Depends(get_session)) -> User:
+    if not is_super_admin(s, user):
+        raise HTTPException(403, "Only the founding admin can use Subscription Test Mode.")
+    return user
+
+
+def set_test_plan(s: Session, user: User, plan: str | None) -> None:
+    row = super_admin(s)
+    assert row and row.user_id == user.id
+    previous = row.test_plan
+    row.test_plan = plan
+    s.add(PlanTestEvent(user_id=user.id, from_plan=previous, to_plan=plan))
+    s.commit()
+    log.info("Subscription Test Mode: %s switched from %s to %s", user.email, previous or "off", plan or "off")
+
+
+def test_plan_for_token(token: str) -> str | None:
+    """The test plan for a session cookie: set only for the Super Admin, None for everyone else."""
+    with SessionLocal() as s:
+        row = s.get(AuthSession, _token_hash(token))
+        if not row or row.expires_at < datetime.now(timezone.utc):
+            return None
+        sa = s.get(SuperAdmin, 1)
+        return sa.test_plan if sa and sa.user_id == row.user_id else None
 
 
 # --- brute-force brake: at most 10 failed sign-ins per IP per 5 minutes ---------------------------

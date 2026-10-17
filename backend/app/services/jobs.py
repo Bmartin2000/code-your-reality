@@ -25,7 +25,6 @@ from ..workflow.compiler import COMPILE_STAGES, CompileError, Compiler
 from ..workflow.schema import WorkflowDefinition
 from ..workflow.validation import validate
 from . import apps as app_service
-from . import plans
 from .audit import record_audit
 
 log = logging.getLogger("reality_compiler.jobs")
@@ -107,7 +106,8 @@ def mark_interrupted_jobs() -> None:
 # --- Analysis ------------------------------------------------------------------------------------
 
 
-def start_analysis(project_id: str) -> str:
+def start_analysis(project_id: str, frame_samples: int) -> str:
+    """frame_samples comes from the plan checked by the request (it may be a Super Admin test plan)."""
     with SessionLocal() as s:
         job = Job(project_id=project_id, kind="analysis", status="queued", stages=new_stages(ANALYSIS_STAGES))
         s.add(job)
@@ -115,13 +115,13 @@ def start_analysis(project_id: str) -> str:
         project.status = "analyzing"
         s.commit()
         job_id = job.id
-    _analysis_pool.submit(_run_analysis_safe, job_id)
+    _analysis_pool.submit(_run_analysis_safe, job_id, frame_samples)
     return job_id
 
 
-def _run_analysis_safe(job_id: str) -> None:
+def _run_analysis_safe(job_id: str, frame_samples: int) -> None:
     try:
-        _run_analysis(job_id)
+        _run_analysis(job_id, frame_samples)
     except Exception as exc:  # pragma: no cover - last-resort guard
         log.error("analysis crashed: %s", traceback.format_exc())
         _finish(job_id, ok=False, error=f"Unexpected error: {exc}", project_status="failed")
@@ -139,7 +139,7 @@ def _finish(job_id: str, *, ok: bool, error: str | None = None, result: dict[str
     _save(job_id, mutate)
 
 
-def _run_analysis(job_id: str) -> None:
+def _run_analysis(job_id: str, frame_samples: int) -> None:
     settings = get_settings()
     t = StageTracker(job_id)
     _save(job_id, lambda j, _p: setattr(j, "status", "running"))
@@ -237,8 +237,7 @@ def _run_analysis(job_id: str) -> None:
         t.skip("frame_sampling", "No video provided")
     else:
         try:
-            with SessionLocal() as s:
-                frame_count = min(plans.limits(s).frame_samples, max(settings.frame_samples, 1) * 2)
+            frame_count = min(frame_samples, max(settings.frame_samples, 1) * 2)
             frames = media_mod.sample_frames(video_path, duration, work_dir / "frames", frame_count, settings.frame_width)
             with SessionLocal() as s:
                 a = s.get(MediaAsset, asset_id)

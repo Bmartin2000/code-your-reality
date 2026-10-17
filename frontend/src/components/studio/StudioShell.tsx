@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { AppWindow, House, Plus, UserRound } from 'lucide-react'
+import { AppWindow, FlaskConical, House, Plus, UserRound } from 'lucide-react'
 import { BrandMark } from '../ui/primitives'
 import { useAccount } from '../../lib/queries'
 import { cn } from '../../lib/cn'
@@ -47,6 +47,17 @@ export default function StudioShell() {
           </div>
         </div>
       </header>
+
+      {account.data?.test_mode && (
+        <Link
+          to="/studio/settings"
+          role="status"
+          className="flex items-center justify-center gap-2 bg-[#FFF3D6] px-4 py-2 text-center text-[13px] font-medium text-warning"
+        >
+          <FlaskConical className="size-4 shrink-0" aria-hidden />
+          Subscription Test Mode: you’re using the app as {account.data.plan.name}. Real plan unchanged.
+        </Link>
+      )}
 
       <main id="main" className="pb-24 md:pb-0">
         <Outlet />

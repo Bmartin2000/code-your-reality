@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, LogOut, RotateCcw, Spa
 import { ErrorState, LoadingState } from '../../components/ui/primitives'
 import { Button, ButtonLink } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/overlays'
+import { TestModeCard } from '../../components/studio/TestModeCard'
 import { qk, useAccount, useCapabilities, useMe } from '../../lib/queries'
 import { api } from '../../lib/api'
 import { SUPPORT_URL } from '../../lib/plans'
@@ -116,6 +117,8 @@ export default function Settings() {
         </section>
       )}
 
+      {user?.super_admin && <TestModeCard />}
+
       <section className="rounded-3xl bg-ink-900 p-6" aria-labelledby="plan-title">
         {account.isLoading ? (
           <LoadingState className="min-h-[120px]" />
@@ -134,7 +137,7 @@ export default function Settings() {
                   </h2>
                   {acc.company && <p className="mt-1 text-[14px] text-fg-muted">{acc.company} · {acc.billing_email}</p>}
                 </div>
-                {plan.id === 'free' ? (
+                {acc.test_mode && plan.id !== 'free' ? null : plan.id === 'free' ? (
                   <ButtonLink to="/studio/upgrade?plan=plus" variant="primary" size="sm">
                     Upgrade
                   </ButtonLink>

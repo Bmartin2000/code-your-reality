@@ -150,6 +150,33 @@ class AuthSession(Base):
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
+class SuperAdmin(Base):
+    """The founding account: the first user ever registered, pinned by user id (not by role).
+
+    Holds that account's private Subscription Test Mode. The workspace's real plan (Account.plan)
+    is never touched by it.
+    """
+
+    __tablename__ = "super_admin"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)  # a single row
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True)
+    test_plan: Mapped[str | None] = mapped_column(String(20), default=None)  # None = real plan
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class PlanTestEvent(Base):
+    """Log of Subscription Test Mode switches."""
+
+    __tablename__ = "plan_test_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(32), index=True)
+    from_plan: Mapped[str | None] = mapped_column(String(20))
+    to_plan: Mapped[str | None] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class Account(Base):
     """The workspace's subscription. Single-tenant build: one row with id 'default'."""
 

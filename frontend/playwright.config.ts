@@ -16,8 +16,10 @@ export default defineConfig({
   projects: [
     // Registers the first (admin) user on the empty test database and saves the signed-in session.
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: 'e2e/.auth/admin.json' }, testIgnore: /auth\.setup\.ts/, dependencies: ['setup'] },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: 'e2e/.auth/admin.json' }, testIgnore: [/auth\.setup\.ts/, /test-mode/], dependencies: ['setup'] },
     { name: 'mobile', use: { ...devices['Pixel 7'], storageState: 'e2e/.auth/admin.json' }, testMatch: /smoke/, dependencies: ['setup'] },
+    // Subscription Test Mode changes what the shared admin sees, so it runs after everything else.
+    { name: 'test-mode', use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/admin.json' }, testMatch: /test-mode/, dependencies: ['desktop', 'mobile'] },
   ],
   webServer: [
     {

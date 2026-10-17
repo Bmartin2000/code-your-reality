@@ -153,7 +153,16 @@ export default function Upgrade() {
             </span>
           </div>
           <p className="text-[13px] text-fg-subtle">Charged today: €0 (demo)</p>
-          <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" loading={busy} icon={<Check className="size-5" />}>
+          {account.data?.test_mode && (
+            <p className="mt-5 rounded-2xl bg-[#FFF3D6] p-3 text-[14px] text-warning">
+              You’re in Subscription Test Mode, so checkout is off and your real plan can’t change. Switch the test plan in{' '}
+              <Link to="/studio/settings" className="font-medium underline">
+                Account
+              </Link>
+              .
+            </p>
+          )}
+          <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" loading={busy} disabled={!!account.data?.test_mode} icon={<Check className="size-5" />}>
             Activate {chosen.name}
           </Button>
           <p className="mt-3 text-center text-[13px] text-fg-subtle">

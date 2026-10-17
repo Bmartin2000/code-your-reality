@@ -6,6 +6,7 @@ plan without charging anything (the UI says so). Limits are enforced here, on th
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -41,6 +42,11 @@ PLANS: dict[str, PlanLimits] = {
     "business": PlanLimits("business", "Business", 49, apps=25, members=25, analyses_per_month=200, frame_samples=12, reports=True, integrations=True, team=True),
 }
 
+# Subscription Test Mode: the plan the founding Super Admin is testing as, for the current request
+# only. Set by TestPlanMiddleware (main.py) after checking the session; None for everyone else.
+TEST_PLAN: ContextVar[str | None] = ContextVar("cyr_test_plan", default=None)
+TEST_PLANS = ("free", "plus")
+
 FEATURE_NAMES = {"reports": "Reports", "integrations": "Connections", "team": "Team access"}
 
 
@@ -66,7 +72,8 @@ def ensure_account() -> None:
 
 
 def limits(s: Session) -> PlanLimits:
-    return PLANS.get(account(s).plan, PLANS["free"])
+    """The plan in effect for this request: the test plan in Test Mode, otherwise the workspace's plan."""
+    return PLANS.get(TEST_PLAN.get() or account(s).plan, PLANS["free"])
 
 
 def usage(s: Session) -> dict[str, int]:
@@ -122,4 +129,6 @@ def summary(s: Session) -> dict[str, Any]:
         "usage": usage(s),
         "plans": [p.to_dict() for p in PLANS.values()],
         "billing_live": False,
+        # Only present for the Super Admin in Subscription Test Mode; real_plan is never changed by it.
+        "test_mode": {"plan": TEST_PLAN.get(), "real_plan": acc.plan} if TEST_PLAN.get() else None,
     }

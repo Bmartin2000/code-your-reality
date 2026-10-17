@@ -14,6 +14,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
+from starlette.requests import HTTPConnection
 
 from .api import account, apps, auth, projects
 from .config import get_settings
@@ -22,7 +24,8 @@ from .pipeline.media import ALLOWED_EXTENSIONS, ffmpeg_exe
 from .pipeline.model import OllamaProvider
 from .pipeline.transcribe import whisper_installed
 from .services.jobs import mark_interrupted_jobs
-from .services.auth import require_user
+from .services import plans
+from .services.auth import COOKIE, require_user, test_plan_for_token
 from .services.plans import ensure_account
 from .workflow.runtime import RuntimeErrorBase
 
@@ -59,6 +62,29 @@ if settings.basic_auth_user and settings.basic_auth_password:
         if not (header.startswith("Basic ") and hmac.compare_digest(header[6:], _expected)):
             return Response("Authentication required.", status_code=401, headers={"WWW-Authenticate": 'Basic realm="Code Your Reality"'})
         return await call_next(request)
+
+
+class TestPlanMiddleware:
+    """Subscription Test Mode: for API requests from the founding Super Admin's session, every plan
+    check in this request uses the chosen test plan (plans.TEST_PLAN). Nobody else is affected."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"].startswith("/api/"):
+            token = HTTPConnection(scope).cookies.get(COOKIE)
+            plan = await run_in_threadpool(test_plan_for_token, token) if token else None
+            if plan:
+                reset = plans.TEST_PLAN.set(plan)
+                try:
+                    return await self.app(scope, receive, send)
+                finally:
+                    plans.TEST_PLAN.reset(reset)
+        return await self.app(scope, receive, send)
+
+
+app.add_middleware(TestPlanMiddleware)
 
 
 def _error(status: int, message: str, **extra: Any) -> JSONResponse:

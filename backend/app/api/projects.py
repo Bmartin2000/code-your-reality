@@ -364,8 +364,8 @@ def analyze(project_id: str, s: Session = Depends(get_session)) -> dict[str, Any
         raise HTTPException(409, "A job is already running for this project.")
     if not p.media and not p.narration.strip():
         raise HTTPException(400, "Upload a recording or write a narration first.")
-    plans.check_analysis(s)
-    job_id = jobs.start_analysis(p.id)
+    plan = plans.check_analysis(s)
+    job_id = jobs.start_analysis(p.id, plan.frame_samples)
     return _job_dict(s.get(Job, job_id))
 
 

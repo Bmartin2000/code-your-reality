@@ -14,6 +14,7 @@ import type {
   Effect,
   Job,
   ProjectDetail,
+  TestModeState,
   ProjectSummary,
   RecordEvent,
   TranscriptSegment,
@@ -38,6 +39,8 @@ export interface AuthUser {
   name: string
   role: 'admin' | 'user'
   created_at: string
+  /** The founding account (first ever registered); only it can use Subscription Test Mode. */
+  super_admin?: boolean
 }
 
 export interface AuthState {
@@ -166,6 +169,8 @@ export const api = {
   createUser: (body: { name: string; email: string; password: string; role: 'admin' | 'user' }) => request<AuthUser>('POST', '/api/users', body),
   setUserRole: (id: string, role: 'admin' | 'user') => request<AuthUser>('PATCH', `/api/users/${id}`, { role }),
   deleteUser: (id: string) => request<void>('DELETE', `/api/users/${id}`),
+  testMode: () => request<TestModeState>('GET', '/api/admin/test-mode'),
+  setTestMode: (plan: 'free' | 'plus' | null) => request<TestModeState>('PUT', '/api/admin/test-mode', { plan }),
 
   capabilities: (refresh = false) => request<Capabilities>('GET', `/api/system/capabilities${refresh ? '?refresh=true' : ''}`),
 

@@ -280,6 +280,16 @@ export interface AccountSummary {
   usage: { apps: number; analyses_this_month: number }
   plans: PlanLimits[]
   billing_live: boolean
+  /** Only for the founding Super Admin in Subscription Test Mode. */
+  test_mode: { plan: 'free' | 'plus'; real_plan: string } | null
+}
+
+export interface TestModeState {
+  plan: 'free' | 'plus' | null
+  real_plan: string
+  effective: PlanLimits
+  usage: { apps: number; analyses_this_month: number }
+  log: { from: string | null; to: string | null; at: string }[]
 }
 
 export interface AppViewer {
