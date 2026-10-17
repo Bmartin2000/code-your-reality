@@ -212,7 +212,7 @@ export interface AppDetail extends AppSummary {
   access_mode: 'open' | 'team'
   locked: false
   viewer: AppViewer
-  features: { reports: boolean; integrations: boolean; team: boolean; plan: string }
+  features: { reports: boolean; integrations: boolean; team: boolean; invoicing: boolean; plan: string }
 }
 
 export interface LockedApp {
@@ -276,6 +276,7 @@ export interface PlanLimits {
   reports: boolean
   integrations: boolean
   team: boolean
+  invoicing: boolean
 }
 
 export interface AccountSummary {
@@ -363,14 +364,82 @@ export interface AppTeam {
   members: AppMember[]
 }
 
+export interface InvoiceBuyer {
+  name: string
+  email: string
+  country?: string
+  postcode: string
+  city: string
+  address: string
+  tax_number: string
+}
+
+export interface InvoiceLine {
+  name: string
+  quantity: string | number
+  unit: string
+  unit_price: string | number
+  vat_rate: string
+  net?: string
+  vat?: string
+  gross?: string
+}
+
+export interface InvoiceInfo {
+  id: string
+  kind: 'subscription' | 'sale'
+  draft_number: string
+  number: string | null
+  status: 'draft' | 'issued' | 'failed'
+  error: string | null
+  record_id: string | null
+  record?: { id: string; entity: string; code: string; title: string }
+  buyer: InvoiceBuyer
+  items: InvoiceLine[]
+  currency: string
+  net: string
+  vat: string
+  gross: string
+  issue_date: string
+  due_date: string
+  period_start: string | null
+  period_end: string | null
+  note: string
+  has_pdf: boolean
+  paid_at: string | null
+  issued_at: string | null
+  created_at: string
+}
+
+export interface InvoicingConfig {
+  provider: 'none' | 'szamlazz'
+  connected: boolean
+  agent_key_set: boolean
+  agent_key_hint: string | null
+  e_invoice: boolean
+  send_email: boolean
+  auto_issue: boolean
+  language: 'hu' | 'en' | 'de'
+  currency: 'HUF' | 'EUR' | 'USD'
+  vat_rate: string
+  payment_days: number
+  note: string
+}
+
 export interface BillingInfo {
   plan: PlanLimits
   status: 'active' | 'free'
   started_at: string | null
+  period: { start: string; end: string } | null
   renews_at: string | null
   monthly_eur: number
   company: string
   billing_email: string
+  address: { country: string; postcode: string; city: string; address: string; tax_number: string }
+  usage: { key: string; label: string; used: number | null; limit: number }[]
+  invoicing: InvoicingConfig
+  invoices: InvoiceInfo[]
+  open_amount: string
   payment_method: null
   billing_live: boolean
   history: { id: number; kind: 'checkout' | 'plan_change'; plan: string; amount_eur: number; charged: boolean; by: string; at: string }[]

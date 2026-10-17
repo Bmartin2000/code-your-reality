@@ -9,13 +9,13 @@ import zipfile
 from typing import Any, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db import AppCustomization, AppMember, AppWebhook, GeneratedApp, Record, RecordEvent, get_session
-from ..services import access, integrations, plans, reports
+from ..db import AppCustomization, AppMember, AppWebhook, GeneratedApp, Invoice, Record, RecordEvent, get_session, utcnow
+from ..services import access, integrations, invoicing, plans, reports
 from ..services.auth import require_user
 from ..services.apps import SECTION_COLORS, app_summary, can_seed_sample, customized_manifest, get_app, seed_sample
 from ..workflow.runtime import AppRuntime, RuntimeErrorBase
@@ -56,7 +56,7 @@ def get_application(slug: str, request: Request, s: Session = Depends(get_sessio
         "access_mode": st.access_mode,
         "locked": False,
         "viewer": {"role": viewer.role, "name": viewer.member.name if viewer.member else None, "permissions": sorted(access.PERMISSIONS[viewer.role])},
-        "features": {"reports": plan.reports, "integrations": plan.integrations, "team": plan.team, "plan": plan.name},
+        "features": {"reports": plan.reports, "integrations": plan.integrations, "team": plan.team, "invoicing": plan.invoicing, "plan": plan.name},
     }
 
 
@@ -410,3 +410,187 @@ def remove_member(slug: str, member_id: str, request: Request, s: Session = Depe
         raise HTTPException(400, "The owner can't be removed.")
     s.delete(m)
     s.commit()
+
+
+# --- invoicing: the business invoices its own customers (Plus) -------------------------------------------
+
+
+class Buyer(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    email: str = Field("", max_length=254)
+    country: str = Field("", max_length=60)
+    postcode: str = Field("", max_length=12)
+    city: str = Field("", max_length=80)
+    address: str = Field("", max_length=200)
+    tax_number: str = Field("", max_length=30)
+
+
+class Line(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    quantity: float = Field(1, gt=0)
+    unit: str = Field("db", max_length=20)
+    unit_price: float = Field(ge=0)
+    vat_rate: str = "27"
+
+
+class NewInvoice(BaseModel):
+    record_id: str | None = None
+    buyer: Buyer
+    items: list[Line] = Field(min_length=1, max_length=50)
+    note: str = Field("", max_length=500)
+
+
+class AppInvoicingSettings(BaseModel):
+    provider: Literal["none", "szamlazz"] = "none"
+    agent_key: str | None = Field(None, max_length=200)
+    remove_agent_key: bool = False
+    e_invoice: bool = True
+    send_email: bool = True
+    auto_issue: bool = False
+    language: Literal["hu", "en", "de"] = "hu"
+    currency: Literal["HUF", "EUR", "USD"] = "HUF"
+    vat_rate: Literal["27", "18", "5", "0", "AAM", "TAM", "EU", "EUK", "MAA", "F.AFA", "K.AFA"] = "27"
+    payment_days: int = Field(8, ge=0, le=90)
+    note: str = Field("", max_length=500)
+
+
+def _invoicing_ctx(slug: str, request: Request, s: Session, permission: str) -> tuple[GeneratedApp, access.Viewer, AppRuntime]:
+    ctx = _ctx(slug, request, s, permission)
+    plans.require_feature(s, "invoicing")
+    return ctx
+
+
+def _app_invoice(s: Session, app: GeneratedApp, invoice_id: str) -> Invoice:
+    inv = s.get(Invoice, invoice_id)
+    if not inv or inv.scope != app.id:
+        raise HTTPException(404, "Invoice not found.")
+    return inv
+
+
+def _with_record(rt: AppRuntime, inv: Invoice) -> dict[str, Any]:
+    out = invoicing.public(inv)
+    if inv.record_id:
+        rec = rt.s.get(Record, inv.record_id)
+        if rec and rec.app_id == rt.app.id:
+            out["record"] = {"id": rec.id, "entity": rec.entity, "code": rt.code_of(rec), "title": rt.title_of(rec)}
+    return out
+
+
+@router.get("/{slug}/invoicing")
+def get_app_invoicing(slug: str, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, _v, _rt = _invoicing_ctx(slug, request, s, "admin")
+    c = invoicing.config(s, app.id)
+    s.commit()
+    return invoicing.public_config(c)
+
+
+@router.put("/{slug}/invoicing")
+def set_app_invoicing(slug: str, body: AppInvoicingSettings, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, _v, _rt = _invoicing_ctx(slug, request, s, "admin")
+    return invoicing.public_config(invoicing.update_config(s, app.id, body.model_dump()))
+
+
+@router.get("/{slug}/invoices")
+def list_invoices(slug: str, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, _v, rt = _invoicing_ctx(slug, request, s, "update")
+    c = invoicing.config(s, app.id)
+    s.commit()
+    return {"config": invoicing.public_config(c), "invoices": [_with_record(rt, i) for i in invoicing.list_for(s, app.id)]}
+
+
+def _guess(fields: list[dict[str, Any]], data: dict[str, Any], *words: str) -> str:
+    for f in fields:
+        if any(w in f["key"].lower() for w in words) and data.get(f["key"]) not in (None, ""):
+            return str(data[f["key"]])
+    return ""
+
+
+@router.get("/{slug}/invoices/prefill")
+def prefill_invoice(slug: str, request: Request, record_id: str, entity: str, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """A starting point from a record: the linked customer as buyer, money fields as lines."""
+    _app, _v, rt = _invoicing_ctx(slug, request, s, "update")
+    rec = rt.get(entity, record_id)
+    e = rt.entity(entity)
+    buyer: dict[str, Any] = {"name": "", "email": ""}
+    for f in e["fields"]:
+        if f["type"] != "reference" or not rec.data.get(f["key"]):
+            continue
+        target = s.get(Record, rec.data[f["key"]])
+        te = rt.entities.get(f["ref_entity"])
+        if not target or not te:
+            continue
+        email = _guess(te["fields"], target.data, "email", "mail")
+        if email or not buyer["name"]:
+            buyer = {
+                "name": rt.title_of(target),
+                "email": email,
+                "postcode": _guess(te["fields"], target.data, "postcode", "zip", "irsz"),
+                "city": _guess(te["fields"], target.data, "city", "town", "telepules"),
+                "address": _guess(te["fields"], target.data, "address", "street", "cim"),
+                "tax_number": _guess(te["fields"], target.data, "tax", "vat", "adoszam"),
+            }
+    lines = [
+        {"name": f"{f['label']} – {rt.code_of(rec)}", "quantity": 1, "unit": "db", "unit_price": rec.data[f["key"]]}
+        for f in e["fields"]
+        if f["type"] == "money" and isinstance(rec.data.get(f["key"]), (int, float)) and rec.data[f["key"]] > 0
+    ] or [{"name": rt.title_of(rec), "quantity": 1, "unit": "db", "unit_price": 0}]
+    return {"buyer": buyer, "items": lines, "record": {"id": rec.id, "entity": entity, "code": rt.code_of(rec), "title": rt.title_of(rec)}}
+
+
+@router.post("/{slug}/invoices", status_code=201)
+def create_invoice(slug: str, body: NewInvoice, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, viewer, rt = _invoicing_ctx(slug, request, s, "update")
+    rec = None
+    if body.record_id:
+        rec = s.get(Record, body.record_id)
+        if not rec or rec.app_id != app.id:
+            raise HTTPException(404, "Record not found.")
+    inv = invoicing.create(s, app.id, kind="sale", buyer=body.buyer.model_dump(), items=[i.model_dump() for i in body.items], record_id=rec.id if rec else None, note=body.note)
+    if rec:
+        status = f"issued as {inv.number}" if inv.status == "issued" else "draft"
+        author = viewer.member.name if viewer.member else access.ROLE_LABELS[viewer.role]
+        s.add(RecordEvent(app_id=app.id, record_id=rec.id, entity=rec.entity, kind="note", summary=f"Invoice {inv.number or f'DRAFT-{inv.seq:04d}'} for {inv.gross} {inv.currency} ({status}).", detail={"author": author, "invoice": inv.id}))
+    s.commit()
+    return _with_record(rt, inv)
+
+
+@router.get("/{slug}/invoices/{invoice_id}")
+def get_app_invoice(slug: str, invoice_id: str, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, _v, rt = _invoicing_ctx(slug, request, s, "update")
+    return _with_record(rt, _app_invoice(s, app, invoice_id))
+
+
+@router.post("/{slug}/invoices/{invoice_id}/issue")
+def issue_app_invoice(slug: str, invoice_id: str, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, _v, rt = _invoicing_ctx(slug, request, s, "update")
+    return _with_record(rt, invoicing.issue(s, _app_invoice(s, app, invoice_id)))
+
+
+@router.post("/{slug}/invoices/{invoice_id}/paid")
+def app_invoice_paid(slug: str, invoice_id: str, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    app, _v, rt = _invoicing_ctx(slug, request, s, "update")
+    inv = _app_invoice(s, app, invoice_id)
+    inv.paid_at = None if inv.paid_at else utcnow()
+    s.commit()
+    return _with_record(rt, inv)
+
+
+@router.delete("/{slug}/invoices/{invoice_id}", status_code=204)
+def delete_app_invoice(slug: str, invoice_id: str, request: Request, s: Session = Depends(get_session)) -> None:
+    """Only drafts can be deleted; an issued invoice can only be cancelled in Számlázz.hu (storno)."""
+    app, _v, _rt = _invoicing_ctx(slug, request, s, "update")
+    inv = _app_invoice(s, app, invoice_id)
+    if inv.status == "issued":
+        raise HTTPException(409, "Issued invoices can't be deleted. Cancel it with a storno invoice in Számlázz.hu.")
+    s.delete(inv)
+    s.commit()
+
+
+@router.get("/{slug}/invoices/{invoice_id}/pdf")
+def app_invoice_pdf(slug: str, invoice_id: str, request: Request, s: Session = Depends(get_session)) -> FileResponse:
+    app, _v, _rt = _invoicing_ctx(slug, request, s, "update")
+    inv = _app_invoice(s, app, invoice_id)
+    path = invoicing.pdf_path(inv)
+    if not path:
+        raise HTTPException(404, "This invoice has no PDF yet: it is created when the invoice is issued.")
+    return FileResponse(path, media_type="application/pdf", filename=f"{inv.number or inv.id}.pdf")

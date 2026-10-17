@@ -153,7 +153,7 @@ export default function Settings() {
               </div>
               {user?.super_admin ? (
                 <ButtonLink to="/studio/billing" size="sm" variant="secondary" className="mt-5" icon={<Receipt className="size-4" />}>
-                  Billing & payments
+                  Subscription & invoices
                 </ButtonLink>
               ) : (
                 <p className="mt-5 text-[13px] text-fg-subtle">The workspace owner manages the plan and billing.</p>

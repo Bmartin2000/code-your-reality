@@ -228,6 +228,74 @@ class BillingEvent(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
+class InvoicingConfig(Base):
+    """Where invoices are issued. scope = "platform" (Code Your Reality subscriptions, set by the
+    founding admin) or a generated app's id (that business invoicing its own customers).
+
+    provider "none" keeps invoices as drafts; "szamlazz" issues them through the Számlázz.hu Agent.
+    The agent key never leaves the server (API responses only say whether one is set)."""
+
+    __tablename__ = "invoicing_configs"
+
+    scope: Mapped[str] = mapped_column(String(32), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(20), default="none")
+    agent_key: Mapped[str | None] = mapped_column(String(200), default=None)
+    e_invoice: Mapped[bool] = mapped_column(default=True)
+    send_email: Mapped[bool] = mapped_column(default=True)
+    auto_issue: Mapped[bool] = mapped_column(default=True)
+    language: Mapped[str] = mapped_column(String(5), default="hu")
+    currency: Mapped[str] = mapped_column(String(3), default="HUF")
+    vat_rate: Mapped[str] = mapped_column(String(10), default="27")
+    payment_days: Mapped[int] = mapped_column(Integer, default=8)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class BillingProfile(Base):
+    """The subscriber's invoice address (company name and email live on Account)."""
+
+    __tablename__ = "billing_profile"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default="default")
+    country: Mapped[str] = mapped_column(String(60), default="Magyarország")
+    postcode: Mapped[str] = mapped_column(String(12), default="")
+    city: Mapped[str] = mapped_column(String(80), default="")
+    address: Mapped[str] = mapped_column(String(200), default="")
+    tax_number: Mapped[str] = mapped_column(String(30), default="")
+
+
+class Invoice(Base):
+    """An invoice: a subscription invoice (scope "platform") or one a generated app issued to its customer.
+
+    status: draft (not issued, not a valid invoice) | issued (has the provider's number) | failed."""
+
+    __tablename__ = "invoices"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    scope: Mapped[str] = mapped_column(String(32), index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # subscription | sale
+    seq: Mapped[int] = mapped_column(Integer)
+    record_id: Mapped[str | None] = mapped_column(String(32), default=None)
+    status: Mapped[str] = mapped_column(String(10), default="draft")
+    number: Mapped[str | None] = mapped_column(String(60), default=None)  # provider's invoice number once issued
+    error: Mapped[str | None] = mapped_column(Text, default=None)
+    buyer: Mapped[dict[str, Any]] = mapped_column(JSON)
+    items: Mapped[list[Any]] = mapped_column(JSON)
+    currency: Mapped[str] = mapped_column(String(3))
+    net: Mapped[str] = mapped_column(String(20))
+    vat: Mapped[str] = mapped_column(String(20))
+    gross: Mapped[str] = mapped_column(String(20))
+    issue_date: Mapped[str] = mapped_column(String(10))
+    due_date: Mapped[str] = mapped_column(String(10))
+    period_start: Mapped[str | None] = mapped_column(String(10), default=None)
+    period_end: Mapped[str | None] = mapped_column(String(10), default=None)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    pdf_name: Mapped[str | None] = mapped_column(String(80), default=None)
+    paid_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    issued_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class AppMember(Base):
     """A person with access to a generated application, identified by a personal access key."""
 

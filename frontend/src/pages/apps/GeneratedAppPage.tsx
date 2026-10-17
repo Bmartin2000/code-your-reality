@@ -35,7 +35,9 @@ import { Reports } from '../../components/app/Reports'
 import { Connections } from '../../components/app/Connections'
 import { Team } from '../../components/app/Team'
 import { PlusGate } from '../../components/studio/PlusGate'
-import { ArrowDown, ArrowUp, BarChart3, Download, KeyRound, LayoutGrid, LifeBuoy, Link2, List, MessageSquare, Upload, Users, Wand2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, Download, FileText, KeyRound, LayoutGrid, LifeBuoy, Link2, List, MessageSquare, Upload, Users, Wand2 } from 'lucide-react'
+import { Invoices, invoicesKey } from '../../components/app/Invoices'
+import { NewInvoiceDialog } from '../../components/invoicing/NewInvoiceDialog'
 import { Board } from '../../components/app/Board'
 import { ImportDialog } from '../../components/app/ImportDialog'
 import { ImproveDialog } from '../../components/app/ImproveDialog'
@@ -715,6 +717,9 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
   const transition = useTransition(slug, app, entity ?? app.manifest.entities[0])
   const invalidate = useInvalidateApp(slug)
   const [editing, setEditing] = useState(false)
+  const [invoicing, setInvoicing] = useState(false)
+  const qc = useQueryClient()
+  const invoiceCfg = useQuery({ queryKey: invoicesKey(slug), queryFn: () => api.appInvoices(slug), enabled: invoicing })
   const [confirm, setConfirm] = useState<{ key: string; label: string } | null>(null)
 
   if (!entity) return <EmptyState title="Unknown record type" />
@@ -750,6 +755,11 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
           {form.edit_fields.length > 0 && can(app, 'update') && (
             <Button onClick={() => setEditing(true)} icon={<Pencil className="size-3.5" />}>
               Edit
+            </Button>
+          )}
+          {can(app, 'update') && app.features.invoicing && (
+            <Button onClick={() => setInvoicing(true)} icon={<FileText className="size-3.5" />}>
+              Invoice
             </Button>
           )}
         </div>
@@ -788,6 +798,22 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
         </section>
       </div>
 
+      {invoicing && invoiceCfg.data && (
+        <NewInvoiceDialog
+          slug={slug}
+          config={invoiceCfg.data.config}
+          from={{ entity: entity.key, id: record.id }}
+          open={invoicing}
+          onClose={() => setInvoicing(false)}
+          onCreated={(inv) => {
+            setInvoicing(false)
+            qc.invalidateQueries({ queryKey: invoicesKey(slug) })
+            q.refetch()
+            if (inv.status === 'failed') toast.error('Saved, but not issued', inv.error ?? undefined)
+            else toast.success(inv.status === 'issued' ? `Invoice ${inv.number} issued` : `Draft ${inv.draft_number} saved`, 'You’ll find it under Invoices.')
+          }}
+        />
+      )}
       <Dialog open={editing} onClose={() => setEditing(false)} title={`Edit ${record.code}`} wide description="Fields owned by the workflow (states and values set by rules) can't be edited by hand.">
         <SchemaForm
           slug={slug}
@@ -897,6 +923,7 @@ export default function GeneratedAppPage() {
     )
   const a = app.data as AppDetail
   const extra = [
+    { key: 'invoices', label: 'Invoices', icon: FileText, show: can(a, 'update'), plus: !a.features.invoicing },
     { key: 'reports', label: 'Reports', icon: BarChart3, show: can(a, 'reports'), plus: !a.features.reports },
     { key: 'connections', label: 'Connections', icon: Link2, show: can(a, 'admin'), plus: !a.features.integrations },
     { key: 'team', label: 'Team', icon: Users, show: can(a, 'admin'), plus: !a.features.team },
@@ -995,6 +1022,7 @@ export default function GeneratedAppPage() {
           <Routes>
             <Route index element={<Overview slug={slug} app={a} />} />
             <Route path="reports" element={a.features.reports ? <Reports slug={slug} /> : <ReportsGate />} />
+            <Route path="invoices" element={a.features.invoicing ? <Invoices slug={slug} app={a} /> : <InvoicesGate />} />
             <Route path="connections" element={<Connections slug={slug} />} />
             <Route path="team" element={<Team slug={slug} />} />
             <Route path=":entity" element={<EntityList slug={slug} app={a} />} />
@@ -1008,6 +1036,18 @@ export default function GeneratedAppPage() {
           </footer>
         </main>
       </div>
+    </div>
+  )
+}
+
+function InvoicesGate() {
+  return (
+    <div>
+      <h1 className="display mb-6 text-[clamp(1.8rem,3vw,2.4rem)] leading-[1.08]">Invoices</h1>
+      <PlusGate
+        title="Invoice your customers from your app"
+        body="Plus lets you invoice straight from a record (for example a rental): the customer and amounts are filled in for you. Connect your own Számlázz.hu account to issue real invoices and email them automatically."
+      />
     </div>
   )
 }

@@ -69,12 +69,25 @@ Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` 
   - *Names & colours*: rename the app and each section in your own words and pick their colours. This is stored separately, so it survives recompiling.
   - *Help*.
 - **My apps**: all apps of the workspace with their sections, record counts, last activity and version. From here you can Open, Change, Copy link or Download each one. A short guide explains the three ways to change a finished app.
-- **Billing & payments** (workspace owner only, checked on the server):
-  - plan, status, next renewal and payment method;
-  - editable billing details;
-  - billing history of every upgrade and plan change.
+- **Subscription & invoices** (workspace owner only, checked on the server):
+  - the plan, the current period, the renewal date and the open balance;
+  - **usage** against the plan (video analyses this month, apps, people per app);
+  - the invoice address;
+  - **every invoice** (view, print, PDF, mark paid).
 
-  Payment isn't connected, so every entry is marked "not charged (demo)". Other users can see the plan but can't change it.
+  A paid plan gets one invoice per monthly period, created when the period starts, renewals included. Other users can see the plan but can't change it.
+- **Invoicing through Számlázz.hu, optional, connected from the owner's admin:**
+  - Until it's connected, invoices are clearly labelled **drafts**. A draft is not a valid invoice and is not sent.
+  - Under **Account → Subscription & invoices → Connect Számlázz.hu**, the owner pastes a Számla Agent key. The key is stored on the server, write-only; responses show only its last 4 characters.
+  - From then on, subscription invoices are issued automatically, and Számlázz.hu emails the PDF to the subscriber's billing address.
+  - The XML follows the public Számla Agent format. Errors from Számlázz.hu are shown as they come, and the invoice stays a draft so it can be issued again.
+  - Try it with a free Számlázz.hu test account first.
+- **Invoices inside the generated app (Plus):** the business invoices its own customers.
+  - On a record (for example a rental), **Invoice** fills in the linked customer (name, email) and the money fields as lines.
+  - Lines carry quantity, unit, price and VAT (27/18/5/0 %, AAM, TAM, EU…), and the totals are calculated on the server.
+  - The **Invoices** section lists drafts, issued, unpaid and paid invoices. The invoice also appears in the record's history.
+  - Each app connects **its own** Számlázz.hu account (owner role), optionally with auto-issue. Managers can invoice; staff and viewers can't.
+  - Issued invoices can't be deleted (cancel them with a storno in Számlázz.hu).
 - **Help & support**: a help centre (FAQ plus contact with Integrint), reachable from the Studio's top bar, Account, and every app's menu and footer.
 - **Evidence & audit page**: an evidence index for every cited finding, and an audit trail of model, compiler and reviewer actions.
 
@@ -241,10 +254,10 @@ Studio → Account → AI engine shows whether the configured model is installed
 ## Testing
 
 ```powershell
-cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 36 tests: sign-in and users, Subscription Test Mode, notes, import, section names, owner-only billing, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 39 tests: invoices (totals, Számlázz.hu XML and errors with a fake endpoint, renewals, roles), sign-in and users, Subscription Test Mode, notes, import, section names, owner-only billing, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
 cd frontend; npm test                                          # 11 Vitest tests: schema helpers, workflow ops, SchemaForm, CSV parsing
-cd frontend; npx playwright install chromium; npm run test:e2e # 26 Playwright tests: board, filters, notes, import, renaming sections, My apps, billing, help centre, first-admin setup, Subscription Test Mode, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
+cd frontend; npx playwright install chromium; npm run test:e2e # 27 Playwright tests: subscription invoices and invoicing from a rental, board, filters, notes, import, renaming sections, My apps, billing, help centre, first-admin setup, Subscription Test Mode, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.

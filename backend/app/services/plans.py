@@ -31,15 +31,16 @@ class PlanLimits:
     reports: bool
     integrations: bool
     team: bool
+    invoicing: bool
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
 PLANS: dict[str, PlanLimits] = {
-    "free": PlanLimits("free", "Free demo", 0, apps=1, members=1, analyses_per_month=3, frame_samples=6, reports=False, integrations=False, team=False),
-    "plus": PlanLimits("plus", "Plus", 19, apps=5, members=5, analyses_per_month=30, frame_samples=12, reports=True, integrations=True, team=True),
-    "business": PlanLimits("business", "Business", 49, apps=25, members=25, analyses_per_month=200, frame_samples=12, reports=True, integrations=True, team=True),
+    "free": PlanLimits("free", "Free demo", 0, apps=1, members=1, analyses_per_month=3, frame_samples=6, reports=False, integrations=False, team=False, invoicing=False),
+    "plus": PlanLimits("plus", "Plus", 19, apps=5, members=5, analyses_per_month=30, frame_samples=12, reports=True, integrations=True, team=True, invoicing=True),
+    "business": PlanLimits("business", "Business", 49, apps=25, members=25, analyses_per_month=200, frame_samples=12, reports=True, integrations=True, team=True, invoicing=True),
 }
 
 # Subscription Test Mode: the plan the founding Super Admin is testing as, for the current request
@@ -47,7 +48,7 @@ PLANS: dict[str, PlanLimits] = {
 TEST_PLAN: ContextVar[str | None] = ContextVar("cyr_test_plan", default=None)
 TEST_PLANS = ("free", "plus")
 
-FEATURE_NAMES = {"reports": "Reports", "integrations": "Connections", "team": "Team access"}
+FEATURE_NAMES = {"reports": "Reports", "integrations": "Connections", "team": "Team access", "invoicing": "Invoicing"}
 
 
 def account(s: Session) -> Account:

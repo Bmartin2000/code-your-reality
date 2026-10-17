@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -12,8 +13,9 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import AuthSession, PlanTestEvent, User, get_session
-from ..services import auth, plans
+from ..services import auth, invoicing, plans
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 # A light check on purpose: intranet addresses (name@company.local) are fine for a sign-in name.
@@ -165,3 +167,34 @@ def set_test_mode(body: TestMode, s: Session = Depends(get_session), user: User 
     """Changes only what this account experiences. The workspace's real plan and billing stay as they are."""
     auth.set_test_plan(s, user, body.plan)
     return _test_mode_state(s, user)
+
+
+# --- Invoicing settings for subscriptions (founding Super Admin only) ---------------------------------
+
+
+class InvoicingSettings(BaseModel):
+    provider: Literal["none", "szamlazz"] = "none"
+    agent_key: str | None = Field(None, max_length=200)
+    remove_agent_key: bool = False
+    e_invoice: bool = True
+    send_email: bool = True
+    auto_issue: bool = True
+    language: Literal["hu", "en", "de"] = "hu"
+    currency: Literal["HUF", "EUR", "USD"] = "EUR"
+    vat_rate: Literal["27", "18", "5", "0", "AAM", "TAM", "EU", "EUK", "MAA", "F.AFA", "K.AFA"] = "27"
+    payment_days: int = Field(8, ge=0, le=90)
+    note: str = Field("", max_length=500)
+
+
+@router.get("/admin/invoicing")
+def get_invoicing(s: Session = Depends(get_session), _user: User = Depends(auth.require_super_admin)) -> dict[str, Any]:
+    c = invoicing.config(s, invoicing.PLATFORM)
+    s.commit()
+    return invoicing.public_config(c)
+
+
+@router.put("/admin/invoicing")
+def set_invoicing(body: InvoicingSettings, s: Session = Depends(get_session), user: User = Depends(auth.require_super_admin)) -> dict[str, Any]:
+    c = invoicing.update_config(s, invoicing.PLATFORM, body.model_dump())
+    log.info("Subscription invoicing set to %s by %s", c.provider, user.email)
+    return invoicing.public_config(c)

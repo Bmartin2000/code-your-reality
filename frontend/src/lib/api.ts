@@ -11,6 +11,10 @@ import type {
   AppSummary,
   BillingInfo,
   ImportResult,
+  InvoiceBuyer,
+  InvoiceInfo,
+  InvoiceLine,
+  InvoicingConfig,
   Manifest,
   SectionColor,
   AuditEvent,
@@ -65,6 +69,8 @@ export class ApiError extends Error {
     return this.status === 0
   }
 }
+
+export type InvoicingSettingsBody = Omit<InvoicingConfig, 'connected' | 'agent_key_set' | 'agent_key_hint'> & { agent_key?: string; remove_agent_key?: boolean }
 
 /** Per-field messages from a refused form: explicit field_errors, or the fields named by a 422. */
 export function fieldErrors(err: unknown): Record<string, string> | null {
@@ -245,6 +251,30 @@ export const api = {
     request<AccountSummary & { charged: boolean }>('POST', '/api/account/checkout', { plan, company, billing_email }),
   changePlan: (plan: 'free' | 'plus' | 'business') => request<AccountSummary>('POST', '/api/account/plan', { plan }),
   billing: () => request<BillingInfo>('GET', '/api/account/billing'),
-  updateBilling: (company: string, billing_email: string) => request<BillingInfo>('PUT', '/api/account/billing', { company, billing_email }),
+  updateBilling: (body: { company: string; billing_email: string; country: string; postcode: string; city: string; address: string; tax_number: string }) =>
+    request<BillingInfo>('PUT', '/api/account/billing', body),
+  issueSubscriptionInvoice: (id: string) => request<InvoiceInfo>('POST', `/api/account/invoices/${id}/issue`),
+  toggleSubscriptionInvoicePaid: (id: string) => request<InvoiceInfo>('POST', `/api/account/invoices/${id}/paid`),
+  subscriptionInvoicePdf: (id: string) => `/api/account/invoices/${id}/pdf`,
+  platformInvoicing: () => request<InvoicingConfig>('GET', '/api/admin/invoicing'),
+  setPlatformInvoicing: (body: InvoicingSettingsBody) => request<InvoicingConfig>('PUT', '/api/admin/invoicing', body),
+
+  appInvoices: (slug: string) => request<{ config: InvoicingConfig; invoices: InvoiceInfo[] }>('GET', `/api/apps/${slug}/invoices`),
+  invoicePrefill: (slug: string, entity: string, recordId: string) =>
+    request<{ buyer: InvoiceBuyer; items: InvoiceLine[]; record: { id: string; entity: string; code: string; title: string } }>(
+      'GET',
+      `/api/apps/${slug}/invoices/prefill?entity=${encodeURIComponent(entity)}&record_id=${encodeURIComponent(recordId)}`,
+    ),
+  createAppInvoice: (slug: string, body: { record_id?: string | null; buyer: InvoiceBuyer; items: InvoiceLine[]; note: string }) =>
+    request<InvoiceInfo>('POST', `/api/apps/${slug}/invoices`, body),
+  issueAppInvoice: (slug: string, id: string) => request<InvoiceInfo>('POST', `/api/apps/${slug}/invoices/${id}/issue`),
+  toggleAppInvoicePaid: (slug: string, id: string) => request<InvoiceInfo>('POST', `/api/apps/${slug}/invoices/${id}/paid`),
+  deleteAppInvoice: (slug: string, id: string) => request<void>('DELETE', `/api/apps/${slug}/invoices/${id}`),
+  appInvoicePdf: (slug: string, id: string) => {
+    const key = appKey(slug)
+    return `/api/apps/${slug}/invoices/${id}/pdf${key ? `?key=${key}` : ''}`
+  },
+  appInvoicing: (slug: string) => request<InvoicingConfig>('GET', `/api/apps/${slug}/invoicing`),
+  setAppInvoicing: (slug: string, body: InvoicingSettingsBody) => request<InvoicingConfig>('PUT', `/api/apps/${slug}/invoicing`, body),
   resetApp: (slug: string) => request<{ deleted: number }>('POST', `/api/apps/${slug}/reset`),
 }

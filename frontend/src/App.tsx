@@ -16,6 +16,7 @@ const Settings = lazy(() => import('./pages/studio/Settings'))
 const Upgrade = lazy(() => import('./pages/studio/Upgrade'))
 const Users = lazy(() => import('./pages/studio/Users'))
 const Billing = lazy(() => import('./pages/studio/Billing'))
+const InvoicingSettings = lazy(() => import('./pages/studio/InvoicingSettings'))
 const Support = lazy(() => import('./pages/studio/Support'))
 const ProjectLayout = lazy(() => import('./pages/studio/project/ProjectLayout'))
 const ProjectHome = lazy(() => import('./pages/studio/project/ProjectHome'))
@@ -72,6 +73,14 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="upgrade" element={<Upgrade />} />
             <Route path="support" element={<Support />} />
+            <Route
+              path="invoicing"
+              element={
+                <RequireAuth founder>
+                  <InvoicingSettings />
+                </RequireAuth>
+              }
+            />
             <Route
               path="billing"
               element={

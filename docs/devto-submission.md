@@ -19,6 +19,8 @@ You film the job once — a clerk renting out a camera, a workshop lending a dri
 - **Plus, €19/month**: re-analyze the same video more deeply (12 frames instead of 6), add reports, give colleagues access with roles (owner / manager / staff / viewer), connect a calendar feed and webhooks, and build up to 5 apps.
 - **Integrint Care**: we record and maintain it with you.
 
+Subscribers see their period, usage and invoices. Invoices are issued through Számlázz.hu, Hungary's most common invoicing service, once the operator connects it. Until then they stay clearly marked drafts, and no payment is taken in this preview. On Plus, the generated app can invoice the business's own customers too, straight from a record.
+
 That's less than an hour of developer time per month, for software that matches how the business actually works — and that keeps up: when something changes, the owner records again or types one sentence ("customers should also give an email address"), and the change comes back for approval.
 
 ![Plain-language review: what the app tracks, how things move along, and rules quoting the moment they were said](https://raw.githubusercontent.com/Bmartin2000/code-your-reality/master/docs/screenshots/studio-review.png)
@@ -39,7 +41,7 @@ Run it yourself in a few minutes (Windows, macOS or Linux): the guided example w
 
 {% embed https://github.com/Bmartin2000/code-your-reality %}
 
-FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper and Ollama. One Docker image for servers, plain `pip`/`npm` for local use. Sign-in protects the Studio, so the speech-to-text and the model can't be used anonymously on a public server (the first account becomes admin and adds the rest). 36 backend tests, 11 unit tests and 26 Playwright end-to-end tests, including a full "review → build → rent → refuse → return → reload" journey.
+FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper and Ollama. One Docker image for servers, plain `pip`/`npm` for local use. Sign-in protects the Studio, so the speech-to-text and the model can't be used anonymously on a public server (the first account becomes admin and adds the rest). 39 backend tests, 11 unit tests and 27 Playwright end-to-end tests, including a full "review → build → rent → refuse → return → reload" journey.
 
 ## How I Built It
 
