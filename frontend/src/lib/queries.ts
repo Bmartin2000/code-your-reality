@@ -16,6 +16,8 @@ export const qk = {
   events: (slug: string) => ['app-data', slug, 'events'] as const,
   capabilities: ['capabilities'] as const,
   account: ['account'] as const,
+  me: ['me'] as const,
+  users: ['users'] as const,
 }
 
 const ACTIVE = new Set(['analyzing', 'compiling'])
@@ -69,4 +71,12 @@ export function setProjectCache(qc: ReturnType<typeof useQueryClient>, p: Projec
 
 export function useAccount() {
   return useQuery({ queryKey: qk.account, queryFn: api.account, staleTime: 10_000 })
+}
+
+export function useMe() {
+  return useQuery({ queryKey: qk.me, queryFn: api.me, staleTime: 60_000 })
+}
+
+export function useUsers() {
+  return useQuery({ queryKey: qk.users, queryFn: api.users })
 }

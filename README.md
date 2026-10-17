@@ -172,7 +172,7 @@ macOS/Linux: use `.venv/bin/python` instead of `.\.venv\Scripts\python.exe`.
 One container serves the frontend and the API, with FFmpeg and faster-whisper (CPU, int8) inside. The AI model is reached over HTTP: Ollama Cloud with an API key, or a local Ollama.
 
 ```bash
-cp .env.example .env   # OLLAMA_URL=https://ollama.com, OLLAMA_API_KEY=..., OLLAMA_MODEL=..., BASIC_AUTH_*
+cp .env.example .env   # OLLAMA_URL=https://ollama.com, OLLAMA_API_KEY=..., OLLAMA_MODEL=..., COOKIE_SECURE=true
 docker compose up -d --build
 curl http://localhost:8000/health
 ```
@@ -181,7 +181,7 @@ The API key is read only by the backend from the environment. It's git-ignored, 
 
 ## Running the guided demo
 
-1. Start both servers and open http://localhost:5173.
+1. Start both servers and open http://localhost:5173. The first time, you're asked to create an account: the first account is the admin.
 2. Click **Try the demo**. The plain-language review opens.
 3. Leave out the AI-guessed rule "Late returns may incur a fee", then click **Build my app**.
 4. On the ready screen, click **Open my app**. (Download, the online link, Record again and small changes are offered there too.)
@@ -218,10 +218,10 @@ Studio → Account → AI engine shows whether the configured model is installed
 ## Testing
 
 ```powershell
-cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 18 tests: rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 30 tests: sign-in and users, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
 cd frontend; npm test                                          # 9 Vitest tests: schema helpers, workflow ops, SchemaForm
-cd frontend; npx playwright install chromium; npm run test:e2e # 17 Playwright tests: guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
+cd frontend; npx playwright install chromium; npm run test:e2e # 22 Playwright tests: first-admin setup, sign-in, user management, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.
@@ -229,7 +229,7 @@ Playwright starts its own backend (:8001, temporary data directory) and Vite ser
 ## Limitations (honest)
 
 - **Billing:** plans and their limits are real, but payment is not connected. Upgrades use a clearly labelled demo checkout that charges nothing. Connecting Stripe or Barion is the next step.
-- **Single workspace, no login for the Studio:** the Studio is the owner's console (local, single-tenant). Team roles protect the generated apps through personal access keys, not user accounts.
+- **One shared workspace behind a simple sign-in:** every signed-in user sees the same projects and apps; there are two roles, admin (manages users) and user. There is no password reset by email: an admin removes and re-adds the user. Team roles protect the generated apps through personal access keys.
 - **Online link:** the app link works for anyone who can reach the server. In this local build that means your own computer or network. Public hosting is a deployment step that isn't included here.
 
 - **Model quality depends on the model you run.** With small local models, extraction of entities and lifecycles is usually good, but rule mapping is less consistent (Gemma 4 E4B mapped 2 of 9 rules to enforceable kinds on our test clip). Rules that can't be mapped to an enforceable kind are kept as documented notes for you to fix in the inspector. Nothing is compiled without human review.
@@ -238,11 +238,11 @@ Playwright starts its own backend (:8001, temporary data directory) and Vite ser
 - **Single-process deployment.** Rule checks are serialized per application with an in-process lock. Running several backend workers would need database-level locking.
 - **Recompiling** updates the manifest in place and keeps existing records. Removing a field leaves the old values stored but hidden.
 - Jobs don't survive a server restart. Interrupted jobs are marked failed and can be retried.
-- There is no authentication or multi-user support. This is a local, single-user build.
 - The sample's "video" is an illustrated storyboard with an example narration, not a camera recording, and it's labelled as such.
 
 ## Security & privacy
 
+- **Sign-in:** the Studio API (projects, uploads, analysis, change requests, account) requires a signed-in user, so Whisper and the Ollama model can't be used anonymously. The first registered user becomes admin; after that, only admins add users unless `ALLOW_SIGNUP=true`. Passwords are hashed with PBKDF2-HMAC-SHA256 (390,000 iterations, random salt, standard library only). Sessions are random tokens in an HttpOnly, SameSite=Lax cookie (Secure over HTTPS or with `COOKIE_SECURE=true`), and only their SHA-256 hash is stored. Repeated failed sign-ins from one address are slowed down. `/health` and the generated apps stay public.
 - Uploads are checked by magic bytes, not by the file name or MIME type the client sends. They're size-limited while streaming and duration-limited after probing, and stored under server-generated names (the original name is display metadata only, so path traversal isn't possible).
 - FFmpeg is invoked with argument lists, never through a shell.
 - Model output, transcripts and workflow definitions are treated as untrusted. They're validated with Pydantic on the server and Zod in the client, and interpreted by a closed runtime.
@@ -255,7 +255,7 @@ Playwright starts its own backend (:8001, temporary data directory) and Vite ser
 - Calculated fields and fee rules with an explicit, sandboxed expression language
 - Model comparison: run two models and diff their proposals side by side
 - Timeline view correlating every detected step with the video
-- Role-based access, multi-user review, and export of compiled apps as standalone services
+- Separate workspaces per company, multi-user review, and export of compiled apps as standalone services
 - Postgres support with row-level locking for multi-worker deployments
 
 ---

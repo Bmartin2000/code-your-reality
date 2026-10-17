@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..db import AppMember, AppWebhook, GeneratedApp, get_session
 from ..services import access, integrations, plans, reports
+from ..services.auth import require_user
 from ..services.apps import app_summary, can_seed_sample, get_app, seed_sample
 from ..workflow.runtime import AppRuntime
 
@@ -33,7 +34,7 @@ def _emit(app: GeneratedApp, rt: AppRuntime) -> None:
     integrations.dispatch(app.id, app.slug, rt.emitted)
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_user)])
 def list_apps(s: Session = Depends(get_session)) -> list[dict[str, Any]]:
     return [app_summary(s, a) for a in s.scalars(select(GeneratedApp).order_by(GeneratedApp.updated_at.desc()))]
 

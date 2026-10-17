@@ -11,6 +11,7 @@ backend/data/
 frontend/node_modules/
 frontend/dist/
 frontend/test-results/
+frontend/e2e/.auth/
 frontend/playwright-report/
 frontend/*.tsbuildinfo
 frontend/node_modules/.tmp/

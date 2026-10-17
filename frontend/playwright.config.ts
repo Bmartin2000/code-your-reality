@@ -14,8 +14,10 @@ export default defineConfig({
   reporter: 'list',
   use: { baseURL: 'http://localhost:5174', trace: 'retain-on-failure' },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /smoke/ },
+    // Registers the first (admin) user on the empty test database and saves the signed-in session.
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: 'e2e/.auth/admin.json' }, testIgnore: /auth\.setup\.ts/, dependencies: ['setup'] },
+    { name: 'mobile', use: { ...devices['Pixel 7'], storageState: 'e2e/.auth/admin.json' }, testMatch: /smoke/, dependencies: ['setup'] },
   ],
   webServer: [
     {

@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, RotateCcw, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, LogOut, RotateCcw, Sparkles, Users } from 'lucide-react'
 import { ErrorState, LoadingState } from '../../components/ui/primitives'
 import { Button, ButtonLink } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/overlays'
-import { qk, useAccount, useCapabilities } from '../../lib/queries'
+import { qk, useAccount, useCapabilities, useMe } from '../../lib/queries'
 import { api } from '../../lib/api'
 import { SUPPORT_URL } from '../../lib/plans'
 import { toast } from '../../lib/toast'
@@ -42,7 +43,11 @@ function Meter({ label, used, max }: { label: string; used: number; max: number 
 export default function Settings() {
   const caps = useCapabilities()
   const account = useAccount()
+  const me = useMe()
+  const user = me.data?.user
+  const navigate = useNavigate()
   const qc = useQueryClient()
+  const [signingOut, setSigningOut] = useState(false)
   const [rechecking, setRechecking] = useState(false)
   const [confirmDowngrade, setConfirmDowngrade] = useState(false)
   const [downgrading, setDowngrading] = useState(false)
@@ -75,9 +80,41 @@ export default function Settings() {
     }
   }
 
+  const signOut = async () => {
+    setSigningOut(true)
+    try {
+      await api.logout()
+    } finally {
+      qc.clear()
+      navigate('/login', { replace: true })
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[720px] space-y-4 px-4 py-8 sm:px-6 sm:py-12">
       <h1 className="display mb-6 text-[clamp(2rem,6vw,2.75rem)] leading-[1.08]">Account</h1>
+
+      {user && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-ink-900 p-6" aria-label="Signed in">
+          <div className="min-w-0">
+            <p className="text-[14px] text-fg-subtle">Signed in as</p>
+            <p className="mt-1 truncate text-[17px] font-semibold">
+              {user.name} {user.role === 'admin' && <span className="ml-1 rounded-full bg-brand-50 px-2 py-0.5 text-[12px] font-semibold text-accent">Admin</span>}
+            </p>
+            <p className="truncate text-[14px] text-fg-muted">{user.email}</p>
+          </div>
+          <div className="flex gap-2">
+            {user.role === 'admin' && (
+              <ButtonLink to="/studio/users" size="sm" variant="secondary" icon={<Users className="size-4" />}>
+                Users
+              </ButtonLink>
+            )}
+            <Button size="sm" variant="secondary" onClick={signOut} loading={signingOut} icon={<LogOut className="size-4" />}>
+              Sign out
+            </Button>
+          </div>
+        </section>
+      )}
 
       <section className="rounded-3xl bg-ink-900 p-6" aria-labelledby="plan-title">
         {account.isLoading ? (

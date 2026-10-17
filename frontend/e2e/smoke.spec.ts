@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-for (const path of ['/', '/studio', '/studio/new', '/studio/projects', '/studio/apps', '/studio/settings', '/no-such-page']) {
+for (const path of ['/', '/login', '/studio', '/studio/new', '/studio/projects', '/studio/apps', '/studio/settings', '/no-such-page']) {
   test(`renders ${path} without horizontal overflow or console errors`, async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))

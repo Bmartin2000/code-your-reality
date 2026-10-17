@@ -15,12 +15,13 @@ from ..config import get_settings
 from ..db import AuditEvent, GeneratedApp, Job, MediaAsset, Project, WorkflowVersion, get_session, utcnow
 from ..pipeline.media import ALLOWED_EXTENSIONS, safe_extension, sniff_container
 from ..services import access, jobs, plans
+from ..services.auth import require_user
 from ..services.audit import record_audit, review_diff
 from ..workflow.sample import SAMPLE_SCENES, SAMPLE_TRANSCRIPT, SAMPLE_NARRATION_TITLE, blank_definition, rental_definition
 from ..workflow.schema import WorkflowDefinition
 from ..workflow.validation import review_summary, validate
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", dependencies=[Depends(require_user)])
 
 
 # --- serialization -------------------------------------------------------------------------------

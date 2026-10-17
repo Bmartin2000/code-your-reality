@@ -2,9 +2,11 @@ import { lazy, Suspense, useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { Toaster } from './components/ui/overlays'
 import { LoadingState } from './components/ui/primitives'
+import { RequireAuth } from './components/RequireAuth'
 
 const Landing = lazy(() => import('./pages/Landing'))
 const StartDemo = lazy(() => import('./pages/StartDemo'))
+const Login = lazy(() => import('./pages/Login'))
 const StudioShell = lazy(() => import('./components/studio/StudioShell'))
 const Overview = lazy(() => import('./pages/studio/Overview'))
 const Projects = lazy(() => import('./pages/studio/Projects'))
@@ -12,6 +14,7 @@ const NewCompilation = lazy(() => import('./pages/studio/NewCompilation'))
 const RecentApps = lazy(() => import('./pages/studio/RecentApps'))
 const Settings = lazy(() => import('./pages/studio/Settings'))
 const Upgrade = lazy(() => import('./pages/studio/Upgrade'))
+const Users = lazy(() => import('./pages/studio/Users'))
 const ProjectLayout = lazy(() => import('./pages/studio/project/ProjectLayout'))
 const ProjectHome = lazy(() => import('./pages/studio/project/ProjectHome'))
 const ProjectFlow = lazy(() => import('./pages/studio/project/ProjectFlow'))
@@ -43,14 +46,37 @@ export default function App() {
       <Suspense fallback={<LoadingState className="min-h-dvh" label="Loading" />}>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/demo" element={<StartDemo />} />
-          <Route path="/studio" element={<StudioShell />}>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/demo"
+            element={
+              <RequireAuth>
+                <StartDemo />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/studio"
+            element={
+              <RequireAuth>
+                <StudioShell />
+              </RequireAuth>
+            }
+          >
             <Route index element={<Overview />} />
             <Route path="projects" element={<Projects />} />
             <Route path="new" element={<NewCompilation />} />
             <Route path="apps" element={<RecentApps />} />
             <Route path="settings" element={<Settings />} />
             <Route path="upgrade" element={<Upgrade />} />
+            <Route
+              path="users"
+              element={
+                <RequireAuth admin>
+                  <Users />
+                </RequireAuth>
+              }
+            />
             <Route path="projects/:id" element={<ProjectLayout />}>
               <Route index element={<ProjectFlow />} />
               <Route path="record" element={<RecordAgain />} />

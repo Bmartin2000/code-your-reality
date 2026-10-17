@@ -44,11 +44,20 @@ WHISPER_MODEL=base
 WHISPER_DEVICE=cpu
 WHISPER_COMPUTE_TYPE=int8
 
-# Strongly recommended on a public server: the Studio has no user accounts, and every analysis
-# uses your Ollama Cloud quota.
-BASIC_AUTH_USER=demo
-BASIC_AUTH_PASSWORD=choose-a-long-password
+# Sign-in protects the Studio (and with it Whisper and your Ollama Cloud quota). The first
+# account registered at /login is the admin; keep self-registration off on a public server.
+ALLOW_SIGNUP=false
+COOKIE_SECURE=true   # behind HTTPS (Caddy below)
+
+# Optional: an extra HTTP Basic password in front of everything, e.g. while the server is private.
+# BASIC_AUTH_USER=demo
+# BASIC_AUTH_PASSWORD=choose-a-long-password
 ```
+
+**Create the admin right after the first start.** Open `https://your-domain/login`: on an empty
+database it asks for the admin account, and the first person to register becomes admin. Then add
+colleagues under **Account → Users**. Generated apps stay reachable by their link (they never call
+the AI); turn on Team access in an app to require personal keys there too.
 
 Pick `OLLAMA_MODEL` from the models your account lists (`curl -H "Authorization: Bearer $KEY" https://ollama.com/api/tags`).
 

@@ -1,6 +1,7 @@
 // Captures the README screenshots from a running dev setup (backend :8000, Vite :5173).
 // Prepares a fresh guided sample through the public API: review, approve, compile, operate.
-// Usage: node scripts/screenshots.mjs
+// The Studio needs a signed-in user: CYR_EMAIL / CYR_PASSWORD (registered as admin on a fresh database).
+// Usage: CYR_EMAIL=you@example.com CYR_PASSWORD=... node scripts/screenshots.mjs
 import { chromium } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
@@ -10,8 +11,13 @@ const WEB = 'http://localhost:5173'
 const OUT = path.resolve('..', 'docs', 'screenshots')
 mkdirSync(OUT, { recursive: true })
 
+const EMAIL = process.env.CYR_EMAIL
+const PASSWORD = process.env.CYR_PASSWORD
+if (!EMAIL || !PASSWORD) throw new Error('Set CYR_EMAIL and CYR_PASSWORD.')
+let session = ''
+
 async function call(method, url, body) {
-  const res = await fetch(API + url, { method, headers: { 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) })
+  const res = await fetch(API + url, { method, headers: { 'Content-Type': 'application/json', Cookie: `cyr_session=${session}` }, body: body && JSON.stringify(body) })
   const json = res.status === 204 ? null : await res.json()
   if (!res.ok) throw new Error(`${method} ${url}: ${JSON.stringify(json)}`)
   return json
@@ -35,6 +41,18 @@ function decide(defn) {
   return defn
 }
 
+async function signIn() {
+  const me = await (await fetch(`${API}/auth/me`)).json()
+  const res = await fetch(`${API}/auth/${me.needs_setup ? 'register' : 'login'}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Demo admin', email: EMAIL, password: PASSWORD }),
+  })
+  if (!res.ok) throw new Error(`Sign-in failed: ${await res.text()}`)
+  session = /cyr_session=([^;]+)/.exec(res.headers.get('set-cookie'))[1]
+}
+await signIn()
+
 const previousPlan = (await call('GET', '/account')).plan.id
 await call('POST', '/account/plan', { plan: 'free' })
 const project = await call('POST', '/projects/sample')
@@ -50,7 +68,7 @@ const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10)
 const byName = (n) => items.find((i) => i.data.name.startsWith(n)).id
 await call('POST', `/apps/${slug}/records/rental`, { item: byName('Canon'), customer: customers[0].id, start_date: day(0), expected_return: day(3), deposit: 250 })
 await call('POST', `/apps/${slug}/records/rental`, { item: byName('Aputure'), customer: customers[1].id, start_date: day(0), expected_return: day(2), deposit: 120 })
-await fetch(`${API}/apps/${slug}/records/rental`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: byName('Canon'), customer: customers[2].id, start_date: day(0), expected_return: day(1), deposit: 50 }) })
+await fetch(`${API}/apps/${slug}/records/rental`, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: `cyr_session=${session}` }, body: JSON.stringify({ item: byName('Canon'), customer: customers[2].id, start_date: day(0), expected_return: day(1), deposit: 50 }) })
 const sony = await call('POST', `/apps/${slug}/records/rental`, { item: byName('Sony'), customer: customers[2].id, start_date: day(-3), expected_return: day(0), deposit: 180 })
 await call('POST', `/apps/${slug}/records/rental/${sony.record.id}/transitions/complete_return`)
 
@@ -63,7 +81,12 @@ const shot = async (page, name) => {
   console.log('saved', name)
 }
 
-const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+const signedIn = async (options) => {
+  const context = await browser.newContext(options)
+  await context.addCookies([{ name: 'cyr_session', value: session, url: WEB, httpOnly: true, sameSite: 'Lax' }])
+  return context.newPage()
+}
+const desktop = await signedIn({ viewport: { width: 1440, height: 900 } })
 await desktop.goto(WEB)
 await desktop.waitForTimeout(10_200) // hero cycle reaches the assembled, live application
 await shot(desktop, 'landing-hero')
@@ -110,7 +133,7 @@ await dialog.getByRole('alert').waitFor()
 await desktop.waitForTimeout(400)
 await shot(desktop, 'app-rule-enforced')
 
-const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
+const mobile = await signedIn({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
 await mobile.goto(WEB)
 await mobile.waitForTimeout(10_200)
 await shot(mobile, 'mobile-landing')

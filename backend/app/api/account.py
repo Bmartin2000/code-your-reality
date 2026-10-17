@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session
 
 from ..db import get_session, utcnow
 from ..services import plans
+from ..services.auth import require_user
 
-router = APIRouter(prefix="/api/account")
+router = APIRouter(prefix="/api/account", dependencies=[Depends(require_user)])
 
 
 class Checkout(BaseModel):

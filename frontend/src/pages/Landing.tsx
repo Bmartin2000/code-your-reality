@@ -63,7 +63,7 @@ function Nav() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/studio" className="hidden px-3 text-[15px] text-fg-muted hover:text-accent md:block">
+          <Link to="/login" className="hidden px-3 text-[15px] text-fg-muted hover:text-accent md:block">
             Sign in
           </Link>
           <ButtonLink to="/studio/new" variant="primary" size="sm" className="hidden sm:inline-flex">
@@ -76,7 +76,7 @@ function Nav() {
       </div>
       {open && (
         <nav className="border-t border-line-soft bg-white px-5 pb-6 pt-2 md:hidden" aria-label="Primary">
-          {[...LINKS, ['/studio', 'Sign in'] as const].map(([href, label]) =>
+          {[...LINKS, ['/login', 'Sign in'] as const].map(([href, label]) =>
             href.startsWith('#') ? (
               <a key={href} href={href} onClick={() => setOpen(false)} className="block border-b border-line-soft py-4 text-[17px]">
                 {label}
@@ -728,7 +728,7 @@ function Footer() {
               {label}
             </a>
           ))}
-          <Link to="/studio" className="hover:text-accent">
+          <Link to="/login" className="hover:text-accent">
             Sign in
           </Link>
         </nav>

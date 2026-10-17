@@ -14,10 +14,16 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.main import app  # noqa: E402
 
+ADMIN_EMAIL = "admin@example.com"
+ADMIN_PASSWORD = "correct horse battery"
+
 
 @pytest.fixture(scope="session")
 def client():
     with TestClient(app) as c:
+        # The first registered user becomes admin; the session cookie stays on this client.
+        r = c.post("/api/auth/register", json={"name": "Admin", "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+        assert r.status_code == 201, r.text
         yield c
 
 

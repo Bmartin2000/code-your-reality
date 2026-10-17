@@ -25,10 +25,25 @@ export interface ApiErrorBody {
   upgrade?: boolean
   feature?: string
   auth?: boolean
+  auth_required?: boolean
   field_errors?: Record<string, string>
   rule?: { id: string; statement: string; kind: string; source: string }
   issues?: { severity: string; message: string; target_kind: string; target_id: string }[]
   details?: unknown
+}
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: 'admin' | 'user'
+  created_at: string
+}
+
+export interface AuthState {
+  user: AuthUser | null
+  needs_setup: boolean
+  signup_open: boolean
 }
 
 export class ApiError extends Error {
@@ -42,6 +57,20 @@ export class ApiError extends Error {
   get isNetwork() {
     return this.status === 0
   }
+}
+
+/** Per-field messages from a refused form: explicit field_errors, or the fields named by a 422. */
+export function fieldErrors(err: unknown): Record<string, string> | null {
+  if (!(err instanceof ApiError)) return null
+  if (err.body.field_errors) return err.body.field_errors
+  const details = err.body.details as { loc?: (string | number)[] }[] | undefined
+  if (err.status !== 422 || !Array.isArray(details)) return null
+  const out: Record<string, string> = {}
+  for (const d of details) {
+    const name = d.loc?.[d.loc.length - 1]
+    if (typeof name === 'string') out[name] = name === 'email' ? 'Enter a valid email address.' : 'Check this value.'
+  }
+  return Object.keys(out).length ? out : null
 }
 
 /** Personal access keys for private (team) apps, remembered per app in this browser. */
@@ -129,6 +158,15 @@ function upload(path: string, file: File, onProgress: (fraction: number) => void
 }
 
 export const api = {
+  me: () => request<AuthState>('GET', '/api/auth/me'),
+  login: (email: string, password: string) => request<{ user: AuthUser }>('POST', '/api/auth/login', { email, password }),
+  register: (name: string, email: string, password: string) => request<{ user: AuthUser }>('POST', '/api/auth/register', { name, email, password }),
+  logout: () => request<{ status: string }>('POST', '/api/auth/logout'),
+  users: () => request<AuthUser[]>('GET', '/api/users'),
+  createUser: (body: { name: string; email: string; password: string; role: 'admin' | 'user' }) => request<AuthUser>('POST', '/api/users', body),
+  setUserRole: (id: string, role: 'admin' | 'user') => request<AuthUser>('PATCH', `/api/users/${id}`, { role }),
+  deleteUser: (id: string) => request<void>('DELETE', `/api/users/${id}`),
+
   capabilities: (refresh = false) => request<Capabilities>('GET', `/api/system/capabilities${refresh ? '?refresh=true' : ''}`),
 
   projects: () => request<ProjectSummary[]>('GET', '/api/projects'),

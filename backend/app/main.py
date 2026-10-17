@@ -9,19 +9,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from .api import account, apps, projects
+from .api import account, apps, auth, projects
 from .config import get_settings
 from .db import init_db
 from .pipeline.media import ALLOWED_EXTENSIONS, ffmpeg_exe
 from .pipeline.model import OllamaProvider
 from .pipeline.transcribe import whisper_installed
 from .services.jobs import mark_interrupted_jobs
+from .services.auth import require_user
 from .services.plans import ensure_account
 from .workflow.runtime import RuntimeErrorBase
 
@@ -90,7 +91,7 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "code-your-reality", "version": app.version}
 
 
-@app.get("/api/system/capabilities")
+@app.get("/api/system/capabilities", dependencies=[Depends(require_user)])
 def capabilities(refresh: bool = False) -> dict[str, Any]:
     exe, source = ffmpeg_exe()
     model = OllamaProvider().status(fresh=refresh).to_dict()
@@ -103,6 +104,7 @@ def capabilities(refresh: bool = False) -> dict[str, Any]:
     }
 
 
+app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(apps.router)
 app.include_router(account.router)

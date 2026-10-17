@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     basic_auth_user: str | None = Field(None, validation_alias=env("BASIC_AUTH_USER", "BASIC_AUTH_USER"))
     basic_auth_password: SecretStr | None = Field(None, validation_alias=env("BASIC_AUTH_PASSWORD", "BASIC_AUTH_PASSWORD"))
 
+    # Studio sign-in. The first registered user becomes admin; after that only admins add users,
+    # unless ALLOW_SIGNUP=true opens self-registration.
+    allow_signup: bool = Field(False, validation_alias=env("ALLOW_SIGNUP", "ALLOW_SIGNUP"))
+    # Force the Secure flag on the session cookie (set it behind an HTTPS reverse proxy).
+    cookie_secure: bool = Field(False, validation_alias=env("COOKIE_SECURE", "COOKIE_SECURE"))
+
     # Upload limits
     max_upload_mb: int = Field(200, validation_alias=env("MAX_UPLOAD_MB"))
     max_video_seconds: int = Field(300, validation_alias=env("MAX_VIDEO_SECONDS"))

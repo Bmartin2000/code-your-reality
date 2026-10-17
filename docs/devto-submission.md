@@ -39,7 +39,7 @@ Run it yourself in a few minutes (Windows, macOS or Linux): the guided example w
 
 {% embed https://github.com/Bmartin2000/code-your-reality %}
 
-FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper and Ollama. One Docker image for servers, plain `pip`/`npm` for local use. 23 backend tests, 9 unit tests and 17 Playwright end-to-end tests, including a full "review → build → rent → refuse → return → reload" journey.
+FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper and Ollama. One Docker image for servers, plain `pip`/`npm` for local use. Sign-in protects the Studio, so the speech-to-text and the model can't be used anonymously on a public server (the first account becomes admin and adds the rest). 30 backend tests, 9 unit tests and 22 Playwright end-to-end tests, including a full "review → build → rent → refuse → return → reload" journey.
 
 ## How I Built It
 
