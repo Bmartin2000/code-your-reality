@@ -5,7 +5,9 @@ import { ArrowLeft, LayoutTemplate, Square } from 'lucide-react'
 import { CaptureFlow } from '../../components/studio/CaptureFlow'
 import { Button } from '../../components/ui/Button'
 import { api, ApiError } from '../../lib/api'
-import { setProjectCache, useCapabilities } from '../../lib/queries'
+import type { ProjectDetail } from '../../lib/types'
+import type { StartNotice } from './project/ProjectFlow'
+import { qk, setProjectCache, useCapabilities } from '../../lib/queries'
 import { toast } from '../../lib/toast'
 import { cn } from '../../lib/cn'
 
@@ -75,25 +77,39 @@ export default function NewCompilation() {
     setBusy(true)
     setError(null)
     let projectId: string | null = null
+    let p: ProjectDetail
     try {
       const name = video ? video.file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 80) : 'My process'
-      let p = await api.createProject(name.startsWith('recording') ? 'My process' : name, narration.trim())
+      p = await api.createProject(name.startsWith('recording') ? 'My process' : name, narration.trim())
       projectId = p.id
       if (video) {
         abort.current = new AbortController()
         setProgress(0)
         p = await api.uploadMedia(p.id, video.file, setProgress, abort.current.signal)
       }
-      setProjectCache(qc, p)
-      if (modelReady) await api.analyze(p.id)
-      navigate(`/studio/projects/${p.id}`)
     } catch (e) {
+      // Nothing usable was saved: remove the empty project and stay here so the person can retry.
       const err = e as ApiError
       setBusy(false)
       setProgress(null)
-      if (projectId && (err.status === -1 || err.status === 413 || err.status === 415)) api.deleteProject(projectId).catch(() => undefined)
-      if (err.status !== -1) setError(err.body?.upgrade ? `${err.message} See Account → Upgrade.` : err.message)
+      if (projectId) api.deleteProject(projectId).catch(() => undefined)
+      if (err.status !== -1) setError(err.message)
+      return
     }
+    // The recording is saved from here on: always continue on the project page, so a slow or refused
+    // analysis never leaves the person on this screen (where a reload would start over).
+    setProjectCache(qc, p)
+    let analyzeError: StartNotice | undefined
+    if (modelReady) {
+      try {
+        await api.analyze(p.id)
+        qc.invalidateQueries({ queryKey: qk.project(p.id) })
+      } catch (e) {
+        const err = e as ApiError
+        analyzeError = { message: err.message, upgrade: !!err.body?.upgrade }
+      }
+    }
+    navigate(`/studio/projects/${p.id}`, { state: analyzeError ? { analyzeError } : undefined })
   }
 
   return (

@@ -221,7 +221,7 @@ Studio → Account → AI engine shows whether the configured model is installed
 cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 30 tests: sign-in and users, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
 cd frontend; npm test                                          # 9 Vitest tests: schema helpers, workflow ops, SchemaForm
-cd frontend; npx playwright install chromium; npm run test:e2e # 22 Playwright tests: first-admin setup, sign-in, user management, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
+cd frontend; npx playwright install chromium; npm run test:e2e # 23 Playwright tests: first-admin setup, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.

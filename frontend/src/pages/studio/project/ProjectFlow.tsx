@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertCircle, ArrowRight, Check, CheckCircle2, Copy, Download, ExternalLink, LayoutTemplate, MessageSquareText, Quote, RefreshCw, Share2, Sparkles, X } from 'lucide-react'
@@ -469,26 +469,49 @@ function Ready({ project }: { project: ProjectDetail }) {
 
 // --- Not analyzed yet / failed ---------------------------------------------------------------------
 
+/** Why the analysis didn't start right after recording (passed along from the New app screen). */
+export interface StartNotice {
+  message: string
+  upgrade: boolean
+}
+
 function Start({ project }: { project: ProjectDetail }) {
   const qc = useQueryClient()
+  const location = useLocation()
   const [busy, setBusy] = useState<string | null>(null)
+  const [notice, setNotice] = useState<StartNotice | null>((location.state as { analyzeError?: StartNotice } | null)?.analyzeError ?? null)
   const failed = project.analysis_job?.status === 'failed'
   const run = async (key: string, fn: () => Promise<unknown>) => {
     setBusy(key)
     try {
       const r = await fn()
+      setNotice(null)
       if (r && typeof r === 'object' && 'origin' in r) setProjectCache(qc, r as ProjectDetail)
       else qc.invalidateQueries({ queryKey: qk.project(project.id) })
     } catch (e) {
-      toast.error('Something went wrong', (e as Error).message)
+      const err = e as ApiError
+      if (err.body?.upgrade) setNotice({ message: err.message, upgrade: true })
+      else toast.error('Something went wrong', err.message)
     } finally {
       setBusy(null)
     }
   }
   return (
     <section className="rounded-3xl bg-ink-900 p-6 sm:p-8">
-      <h2 className="text-[21px] font-semibold tracking-[-0.02em]">{failed ? 'We couldn’t finish the analysis.' : 'Your video is saved.'}</h2>
-      <p className="mt-2 text-[16px] leading-relaxed text-fg-muted">{failed ? project.analysis_job?.error : 'Start the analysis when the AI engine is available.'}</p>
+      <h2 className="text-[21px] font-semibold tracking-[-0.02em]">{failed && !notice ? 'We couldn’t finish the analysis.' : 'Your video is saved.'}</h2>
+      <p className="mt-2 text-[16px] leading-relaxed text-fg-muted">
+        {notice ? 'The analysis didn’t start yet.' : failed ? project.analysis_job?.error : 'Start the analysis when the AI engine is available.'}
+      </p>
+      {notice && (
+        <div role="alert" className="mt-4 rounded-2xl bg-[#FBF1DC] p-4 text-[15px] leading-relaxed text-warning">
+          {notice.message}
+          {notice.upgrade && (
+            <ButtonLink to="/studio/upgrade?plan=plus" variant="primary" size="sm" className="mt-3 flex w-fit">
+              See Plus
+            </ButtonLink>
+          )}
+        </div>
+      )}
       <div className="mt-6 flex flex-col gap-2 sm:flex-row">
         <Button variant="primary" loading={busy === 'a'} onClick={() => run('a', () => api.analyze(project.id))} icon={<RefreshCw className="size-4" />}>
           {failed ? 'Try again' : 'Analyze now'}
