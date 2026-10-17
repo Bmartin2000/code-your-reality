@@ -4,6 +4,7 @@ import { RecordingControl, VideoUploadZone, validateVideo, type StagedVideo } fr
 import { Button } from '../ui/Button'
 import { useCapabilities } from '../../lib/queries'
 import { useMediaQuery } from '../../lib/hooks'
+import { useAiHosting } from '../../lib/hosting'
 
 export interface CaptureResult {
   video: StagedVideo | null
@@ -30,6 +31,7 @@ export function CaptureFlow({
   error?: string | null
 }) {
   const caps = useCapabilities()
+  const hosting = useAiHosting()
   const touch = useMediaQuery('(pointer: coarse)')
   const [staged, setStaged] = useState<StagedVideo | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
@@ -155,7 +157,7 @@ export function CaptureFlow({
       </div>
 
       <p className="flex items-center justify-center gap-1.5 text-center text-[13px] text-fg-subtle">
-        <Lock className="size-3.5" aria-hidden /> Your video is processed on this computer. It is never sent to a cloud AI service.
+        <Lock className="size-3.5" aria-hidden /> {hosting.privacy}
       </p>
     </div>
   )

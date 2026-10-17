@@ -136,7 +136,7 @@ export default function Settings() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 id="engine-title" className="text-[19px] font-semibold">AI engine</h2>
-            <p className="mt-1 text-[15px] text-fg-muted">{caps.isLoading ? 'Checking…' : engineOk ? `Ready · ${data!.model.model} on this computer` : 'Offline — videos can be saved and analyzed later'}</p>
+            <p className="mt-1 text-[15px] text-fg-muted">{caps.isLoading ? 'Checking…' : engineOk ? `Ready · ${data!.model.model} ${data!.model.cloud ? 'via Ollama Cloud' : 'on this server'}` : 'Offline — videos can be saved and analyzed later'}</p>
           </div>
           <Button size="sm" variant="secondary" onClick={recheck} loading={rechecking || caps.isFetching} icon={<RotateCcw className="size-4" />}>
             Check
@@ -152,7 +152,7 @@ export default function Settings() {
             ) : (
               data && (
                 <>
-                  <Row label="Model server" ok={data.model.reachable} value={`Ollama-compatible · ${data.model.url}`} hint={data.model.reachable ? undefined : data.model.error} />
+                  <Row label="Model server" ok={data.model.reachable} value={`${data.model.cloud ? 'Ollama Cloud' : 'Ollama'} · ${data.model.url}${data.model.api_key_configured ? ' · API key set on the server' : ''}`} hint={data.model.reachable ? undefined : data.model.error} />
                   <Row label="Model" ok={data.model.installed} value={data.model.model} hint={data.model.installed ? (data.model.vision ? 'Sees the video frames and reads the transcript.' : 'No vision: transcript and notes only.') : data.model.error} />
                   <Row label="Speech to text" ok={data.transcription.installed && data.transcription.enabled} value={`faster-whisper · ${data.transcription.model}`} />
                   <Row label="Video processing" ok={data.ffmpeg.available} value={`FFmpeg · ${data.ffmpeg.source}`} />

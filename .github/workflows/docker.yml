@@ -1,0 +1,40 @@
+name: Docker image
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t code-your-reality:ci .
+
+      - name: Start container (no model, no transcription)
+        run: |
+          docker run -d --name cyr -p 8000:8000 \
+            -e OLLAMA_URL=http://127.0.0.1:9 -e WHISPER_ENABLED=false \
+            code-your-reality:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/health && break; sleep 2; done
+
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fsS http://localhost:8000/health | grep '"status":"ok"'
+          curl -fsS http://localhost:8000/ | grep -i '<div id="root">'
+          curl -fsS http://localhost:8000/studio | grep -i '<div id="root">'
+          curl -fsS http://localhost:8000/api/system/capabilities | grep '"ffmpeg":{"available":true'
+          curl -fsS -X POST http://localhost:8000/api/projects/sample | grep '"origin":"sample"'
+          docker exec cyr ffmpeg -version | head -1
+          docker exec cyr python -c "import faster_whisper; print('faster-whisper', faster_whisper.__version__)"
+          test "$(docker inspect --format '{{.State.Health.Status}}' cyr)" != "unhealthy"
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs cyr || true

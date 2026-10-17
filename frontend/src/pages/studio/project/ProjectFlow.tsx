@@ -45,7 +45,7 @@ function Working({ job, title }: { job: Job; title: string }) {
         </span>
         <div>
           <h2 className="text-[21px] font-semibold tracking-[-0.02em]">{title}</h2>
-          <p className="text-[14px] text-fg-subtle">{timecode(elapsed)} elapsed · usually a few minutes on this computer</p>
+          <p className="text-[14px] text-fg-subtle">{timecode(elapsed)} elapsed · usually a few minutes</p>
         </div>
       </div>
       <ol className="mt-6 space-y-3">
@@ -448,7 +448,7 @@ function Ready({ project }: { project: ProjectDetail }) {
             </Button>
           )}
         </div>
-        <p className="mt-2 text-[13px] text-fg-subtle">Anyone who can reach this server can use the app. In this preview it runs on your own computer.</p>
+        <p className="mt-2 text-[13px] text-fg-subtle">Anyone with this link can use the app, unless you make it private under Team (Plus).</p>
       </section>
 
       <PlusCard project={project} />

@@ -253,7 +253,7 @@ export interface AppStats {
 export interface Capabilities {
   ffmpeg: { available: boolean; source: string }
   transcription: { engine: string; installed: boolean; enabled: boolean; model: string }
-  model: { reachable: boolean; url: string; model: string; installed: boolean; vision: boolean; error: string | null }
+  model: { reachable: boolean; url: string; model: string; installed: boolean; vision: boolean; error: string | null; cloud?: boolean; api_key_configured?: boolean; capabilities_source?: string }
   limits: { max_upload_mb: number; max_video_seconds: number; formats: string[]; frame_samples: number }
 }
 

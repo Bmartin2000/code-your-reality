@@ -30,6 +30,7 @@ import { BrandMark } from '../components/ui/primitives'
 import { ButtonLink } from '../components/ui/Button'
 import { cn } from '../lib/cn'
 import { COMPARISON, PLANS, SUPPORT_URL } from '../lib/plans'
+import { useAiHosting } from '../lib/hosting'
 
 function Reveal({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   return (
@@ -107,6 +108,7 @@ function PhoneMock({ children, className }: { children: React.ReactNode; classNa
 }
 
 function Hero() {
+  const hosting = useAiHosting()
   return (
     <section className="relative overflow-hidden px-5 pb-20 pt-14 sm:pt-20" aria-labelledby="hero-title">
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
@@ -141,7 +143,7 @@ function Hero() {
             </ButtonLink>
           </motion.div>
           <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] text-fg-subtle lg:justify-start">
-            {['Free demo, no card', 'AI runs on your computer', 'Support by Integrint'].map((t) => (
+            {['Free demo, no card', hosting.short, 'Support by Integrint'].map((t) => (
               <li key={t} className="flex items-center gap-1.5">
                 <Check className="size-4 text-success" /> {t}
               </li>
@@ -284,7 +286,7 @@ const JOURNEY = [
     tint: 'bg-[#F0ECFF] text-[#6B4FD8]',
     title: 'AI understands',
     lead: 'Google’s open Gemma model studies the video.',
-    body: 'It listens to what you said, looks at the frames, and finds what you keep track of, the steps, and the rules. It runs on your own computer — your video never goes to a cloud AI.',
+    body: 'It listens to what you said, looks at the frames, and finds what you keep track of, the steps, and the rules. You see everything it found before anything is built.',
     screen: (
       <div className="space-y-2.5 p-4">
         {['Video received', 'Listening to what you said', 'Looking at the video', 'Understanding your process'].map((t, i) => (
@@ -441,7 +443,7 @@ const FEATURES = [
   { icon: CalendarDays, tint: 'bg-brand-50 text-accent', title: 'Connects to your tools', body: 'Calendar subscription for every date, spreadsheet export, and webhooks to Zapier or your own systems. The tools you mention in your video are suggested automatically.', plus: true },
   { icon: RefreshCw, tint: 'bg-[#E6F4EE] text-success', title: 'Changes in one sentence', body: '“Customers should also give an email address.” Small requests become precise changes you approve. Bigger changes: just record again.' },
   { icon: Download, tint: 'bg-[#F0ECFF] text-[#6B4FD8]', title: 'Your data stays yours', body: 'Download everything as a ZIP with spreadsheets. Full history of every change, effect and rejected mistake.' },
-  { icon: Lock, tint: 'bg-[#FBF1DC] text-warning', title: 'Private by design', body: 'The AI is Google’s open Gemma model running on your computer through Ollama. Videos are never sent to a cloud AI service.' },
+  { icon: Lock, tint: 'bg-[#FBF1DC] text-warning', title: 'Private by design', body: 'The AI is Google’s open Gemma model, run through Ollama. Your recordings are stored on the Code Your Reality server, used only to build your app, and deleted with it.' },
 ]
 
 function Features() {
@@ -663,7 +665,7 @@ function Support() {
 
 const FAQ = [
   ['Do I need technical knowledge?', 'No. You record your process, check the result in plain language, and press a button. The advanced editor exists for those who want it.'],
-  ['What happens to my video?', 'It’s processed on the computer that runs Code Your Reality. The AI (Google’s open Gemma model) runs locally through Ollama, so your recording isn’t sent to a cloud AI service.'],
+  ['What happens to my video?', 'It’s stored on the Code Your Reality server and used only to build your app. The AI is Google’s open Gemma model, run through Ollama — on our own server or through Ollama Cloud, in which case only the transcript and a few still frames are sent for analysis. Deleting an app deletes its video.'],
   ['What if the AI misunderstands something?', 'Nothing goes live without your OK. Every finding shows the sentence it came from, guesses are flagged, and you can leave anything out. Later you can record again or request a small change.'],
   ['What can’t it do yet?', 'Complex calculations (like fees or invoices) are kept as notes, not enforced. Online payment, email notifications and invoicing connections are planned.'],
   ['Can I take my data with me?', 'Yes. Download a ZIP with your app definition, spreadsheets of every list, and the full history — on every plan.'],

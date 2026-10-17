@@ -167,6 +167,18 @@ Configuration is optional: copy `.env.example` to `.env` and adjust the `RC_*` v
 
 macOS/Linux: use `.venv/bin/python` instead of `.\.venv\Scripts\python.exe`.
 
+## Running on a server (Docker, Ollama Cloud)
+
+One container serves the frontend and the API, with FFmpeg and faster-whisper (CPU, int8) inside. The AI model is reached over HTTP: Ollama Cloud with an API key, or a local Ollama.
+
+```bash
+cp .env.example .env   # OLLAMA_URL=https://ollama.com, OLLAMA_API_KEY=..., OLLAMA_MODEL=..., BASIC_AUTH_*
+docker compose up -d --build
+curl http://localhost:8000/health
+```
+
+The API key is read only by the backend from the environment. It's git-ignored, excluded from the Docker build context, and never returned by any endpoint. Full guide, including HTTPS with Caddy (needed for camera recording), local Ollama in Compose, backups and limits: [docs/deploy.md](docs/deploy.md). A GitHub Actions workflow builds the image and smoke-tests `/health`, the frontend, the API and FFmpeg/faster-whisper on every push.
+
 ## Running the guided demo
 
 1. Start both servers and open http://localhost:5173.

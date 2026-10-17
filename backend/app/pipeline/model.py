@@ -197,6 +197,9 @@ class ModelStatus:
     error: str | None = None
     available_models: list[str] | None = None
     thinking: bool = False
+    cloud: bool = False
+    api_key_configured: bool = False  # never the key itself
+    capabilities_source: str = "server"  # server | config | unknown
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -234,18 +237,24 @@ STATUS_TTL_SECONDS = 15.0
 
 
 class OllamaProvider:
+    """Talks to a local Ollama or to Ollama Cloud (https://ollama.com with an API key)."""
+
     def __init__(self) -> None:
         s = get_settings()
-        self.url = s.ollama_url.rstrip("/")
+        self.url = s.ollama_url_normalized
         self.model = s.ollama_model
         self.timeout = s.ollama_timeout_seconds
         self.temperature = s.model_temperature
+        self.vision_override = s.ollama_vision
+        key = s.ollama_api_key.get_secret_value().strip() if s.ollama_api_key else ""
+        self._headers = {"Authorization": f"Bearer {key}"} if key else {}
+        self.cloud = "ollama.com" in self.url
 
     def status(self, *, fresh: bool = False) -> ModelStatus:
         """Model availability, cached briefly so status polling never hammers the model server."""
         import time
 
-        key = f"{self.url}|{self.model}"
+        key = f"{self.url}|{self.model}|{bool(self._headers)}|{self.vision_override}"
         hit = _status_cache.get(key)
         if hit and not fresh and time.monotonic() - hit[0] < STATUS_TTL_SECONDS:
             return hit[1]
@@ -253,22 +262,38 @@ class OllamaProvider:
         _status_cache[key] = (time.monotonic(), result)
         return result
 
+    def _status(self, reachable: bool, installed: bool, vision: bool, error: str | None = None, names: list[str] | None = None, thinking: bool = False, source: str = "server") -> ModelStatus:
+        return ModelStatus(reachable, self.url, self.model, installed, vision, error, names, thinking, self.cloud, bool(self._headers), source)
+
     def _probe(self) -> ModelStatus:
         try:
-            tags = httpx.get(f"{self.url}/api/tags", timeout=4).json()
+            r = httpx.get(f"{self.url}/api/tags", headers=self._headers, timeout=8)
         except Exception as exc:
-            return ModelStatus(False, self.url, self.model, False, False, f"Model server not reachable at {self.url} ({type(exc).__name__}).")
-        names = [m.get("name", "") for m in tags.get("models", [])]
+            return self._status(False, False, False, f"Model server not reachable at {self.url} ({type(exc).__name__}).")
+        if r.status_code in (401, 403):
+            hint = "Set OLLAMA_API_KEY on the server." if not self._headers else "Check OLLAMA_API_KEY on the server."
+            return self._status(False, False, False, f"The model server rejected the request ({r.status_code}). {hint}")
+        if r.status_code != 200:
+            return self._status(False, False, False, f"Model server at {self.url} answered {r.status_code}.")
+        names = [m.get("name") or m.get("model") or "" for m in (r.json().get("models") or [])]
         installed = self.model in names or f"{self.model}:latest" in names
         if not installed:
-            return ModelStatus(True, self.url, self.model, False, False, f"Model '{self.model}' is not installed. Run: ollama pull {self.model}", names)
-        caps: list[str] = []
+            how = "Choose one listed by the cloud account." if self.cloud else f"Run: ollama pull {self.model}"
+            return self._status(True, False, False, f"Model '{self.model}' is not available on {self.url}. {how}", names)
+        caps: list[str] | None = None
         try:
-            info = httpx.post(f"{self.url}/api/show", json={"model": self.model}, timeout=10).json()
-            caps = list(info.get("capabilities") or [])
+            info = httpx.post(f"{self.url}/api/show", json={"model": self.model}, headers=self._headers, timeout=10)
+            if info.status_code == 200:
+                caps = list(info.json().get("capabilities") or [])
         except Exception:
-            pass
-        return ModelStatus(True, self.url, self.model, True, "vision" in caps, None, names, "thinking" in caps)
+            caps = None
+        if self.vision_override != "auto":
+            vision, source = self.vision_override == "true", "config"
+        elif caps is not None:
+            vision, source = "vision" in caps, "server"
+        else:
+            vision, source = False, "unknown"  # set OLLAMA_VISION=true to send frames to a vision model
+        return self._status(True, True, vision, None, names, "thinking" in (caps or []), source)
 
     def _chat(self, system: str, user: str, schema: dict[str, Any], images: list[str] | None = None) -> dict[str, Any]:
         message: dict[str, Any] = {"role": "user", "content": user}
@@ -284,11 +309,15 @@ class OllamaProvider:
         if self.status().thinking:
             body["think"] = False  # structured extraction doesn't need visible reasoning; only sent to models that support the flag
         try:
-            resp = httpx.post(f"{self.url}/api/chat", json=body, timeout=self.timeout)
+            resp = httpx.post(f"{self.url}/api/chat", json=body, headers=self._headers, timeout=self.timeout)
         except httpx.TimeoutException as exc:
             raise ModelUnavailable(f"The model did not answer within {self.timeout}s.") from exc
         except httpx.HTTPError as exc:
             raise ModelUnavailable(f"Model request failed: {exc}") from exc
+        if resp.status_code in (401, 403):
+            raise ModelUnavailable("The model server rejected the API key. Check OLLAMA_API_KEY on the server.")
+        if resp.status_code == 429:
+            raise ModelUnavailable("The model service is rate-limiting requests. Try again in a minute.")
         if resp.status_code != 200:
             raise ModelUnavailable(f"Model server returned {resp.status_code}: {resp.text[:300]}")
         content = (resp.json().get("message") or {}).get("content", "")

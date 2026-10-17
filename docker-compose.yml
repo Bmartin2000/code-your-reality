@@ -1,0 +1,37 @@
+# Code Your Reality on a server.
+#
+#   cp .env.example .env        # set OLLAMA_URL / OLLAMA_API_KEY / OLLAMA_MODEL, BASIC_AUTH_*
+#   docker compose up -d --build
+#   curl http://localhost:8000/health
+#
+# With a local Ollama container instead of Ollama Cloud:
+#   OLLAMA_URL=http://ollama:11434 docker compose --profile local-ollama up -d --build
+#   docker compose exec ollama ollama pull gemma4:e4b
+
+services:
+  app:
+    build: .
+    image: code-your-reality:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - cyr-data:/data # database, uploads and frames (survives rebuilds)
+      - cyr-models:/app/hf-cache # faster-whisper weights, downloaded on first use
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-ollama"]
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  cyr-data:
+  cyr-models:
+  ollama-models:

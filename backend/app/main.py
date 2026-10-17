@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import base64
+import hmac
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from .api import account, apps, projects
 from .config import get_settings
@@ -42,6 +46,20 @@ app.add_middleware(
 )
 
 
+# Optional HTTP Basic auth for a public demo server. /health stays open for load balancers.
+if settings.basic_auth_user and settings.basic_auth_password:
+    _expected = base64.b64encode(f"{settings.basic_auth_user}:{settings.basic_auth_password.get_secret_value()}".encode()).decode()
+
+    @app.middleware("http")
+    async def basic_auth(request: Request, call_next):
+        if request.url.path == "/health":
+            return await call_next(request)
+        header = request.headers.get("authorization", "")
+        if not (header.startswith("Basic ") and hmac.compare_digest(header[6:], _expected)):
+            return Response("Authentication required.", status_code=401, headers={"WWW-Authenticate": 'Basic realm="Code Your Reality"'})
+        return await call_next(request)
+
+
 def _error(status: int, message: str, **extra: Any) -> JSONResponse:
     return JSONResponse(status_code=status, content={"error": {"message": message, **extra}})
 
@@ -65,9 +83,11 @@ async def validation_error(_req: Request, exc: RequestValidationError) -> JSONRe
     return _error(422, "The request is not valid.", details=details)
 
 
+@app.get("/health")
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    """Liveness check for Docker, load balancers and uptime monitors. Never calls the model."""
+    return {"status": "ok", "service": "code-your-reality", "version": app.version}
 
 
 @app.get("/api/system/capabilities")
@@ -86,3 +106,21 @@ def capabilities(refresh: bool = False) -> dict[str, Any]:
 app.include_router(projects.router)
 app.include_router(apps.router)
 app.include_router(account.router)
+
+
+# --- Built frontend (single-origin deployment, e.g. the Docker image) -------------------------------
+
+_dist = settings.frontend_dist
+if _dist and (Path(_dist) / "index.html").is_file():
+    _dist = Path(_dist).resolve()
+    app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str) -> FileResponse:
+        if path.startswith("api/"):
+            raise HTTPException(404, "Not found.")
+        candidate = (_dist / path).resolve()
+        if path and candidate.is_file() and candidate.is_relative_to(_dist):
+            return FileResponse(candidate)
+        return FileResponse(_dist / "index.html")  # client-side routes (/studio, /apps/...)
+
