@@ -200,6 +200,34 @@ class AppSettings(Base):
     calendar_token: Mapped[str] = mapped_column(String(48), default=lambda: uuid.uuid4().hex)
 
 
+class AppCustomization(Base):
+    """Names the owner chose for an app and its sections (and their colours). Applied on top of the
+    compiled manifest when it is served, so it survives recompiling."""
+
+    __tablename__ = "app_customizations"
+
+    app_id: Mapped[str] = mapped_column(ForeignKey("generated_apps.id", ondelete="CASCADE"), primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(120), default=None)
+    sections: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # entity key -> {label, plural_label, color}
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class BillingEvent(Base):
+    """Plan changes and demo checkouts of the workspace. No payment is taken in this build (charged=False)."""
+
+    __tablename__ = "billing_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String(20))  # checkout | plan_change
+    plan: Mapped[str] = mapped_column(String(20))
+    amount_eur: Mapped[int] = mapped_column(Integer, default=0)
+    charged: Mapped[bool] = mapped_column(default=False)
+    company: Mapped[str] = mapped_column(String(200), default="")
+    billing_email: Mapped[str] = mapped_column(String(254), default="")
+    user_email: Mapped[str] = mapped_column(String(254), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class AppMember(Base):
     """A person with access to a generated application, identified by a personal access key."""
 

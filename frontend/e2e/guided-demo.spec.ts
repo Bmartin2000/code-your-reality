@@ -39,7 +39,7 @@ test('guided sample: review, build, operate a rental cycle, download', async ({ 
   await page.getByRole('link', { name: 'Inventory' }).first().click()
   await expect(page.getByRole('row', { name: /Canon EOS R6 body/ }).getByText('Rented')).toBeVisible()
   await page.getByRole('link', { name: 'Rentals' }).first().click()
-  await page.getByRole('button', { name: 'New', exact: true }).click()
+  await page.getByRole('button', { name: 'New rental' }).click()
   await page.getByRole('dialog').getByLabel(/^Item/).selectOption({ label: 'Canon EOS R6 body · ITE-0001 — rented' })
   await page.getByRole('dialog').getByLabel(/^Customer/).selectOption({ index: 2 })
   await page.getByRole('dialog').getByLabel(/Expected return/).fill(due)

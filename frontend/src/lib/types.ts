@@ -145,6 +145,8 @@ export interface ManifestState {
   terminal: boolean
 }
 
+export type SectionColor = 'blue' | 'teal' | 'violet' | 'amber' | 'rose' | 'green' | 'slate'
+
 export interface ManifestEntity {
   key: string
   label: string
@@ -152,6 +154,8 @@ export interface ManifestEntity {
   description: string
   title_field: string
   code_prefix: string
+  /** Section colour chosen by the owner (or given by default). */
+  color?: SectionColor
   fields: ManifestField[]
   state: {
     field: string
@@ -197,7 +201,9 @@ export interface AppSummary {
   workflow_version: number | null
   created_at: string
   updated_at: string
-  entities: { key: string; label: string; plural_label: string }[]
+  entities: { key: string; label: string; plural_label: string; color?: SectionColor }[]
+  record_count: number
+  last_activity_at: string | null
 }
 
 export interface AppDetail extends AppSummary {
@@ -232,7 +238,7 @@ export interface RecordEvent {
   id: number
   record_id: string | null
   entity: string
-  kind: 'created' | 'updated' | 'transition' | 'effect' | 'rejected'
+  kind: 'created' | 'updated' | 'transition' | 'effect' | 'rejected' | 'note'
   summary: string
   detail: Record<string, unknown> | null
   created_at: string
@@ -355,4 +361,23 @@ export interface AppTeam {
   unlocked: boolean
   seats: number
   members: AppMember[]
+}
+
+export interface BillingInfo {
+  plan: PlanLimits
+  status: 'active' | 'free'
+  started_at: string | null
+  renews_at: string | null
+  monthly_eur: number
+  company: string
+  billing_email: string
+  payment_method: null
+  billing_live: boolean
+  history: { id: number; kind: 'checkout' | 'plan_change'; plan: string; amount_eur: number; charged: boolean; by: string; at: string }[]
+}
+
+export interface ImportResult {
+  created: number
+  failed: number
+  errors: { row: number; message: string }[]
 }

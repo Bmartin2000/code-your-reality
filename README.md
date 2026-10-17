@@ -52,7 +52,30 @@ Regenerate the screenshots with `node scripts/screenshots.mjs` from `frontend/` 
 - **Understand**: a three-panel workspace. Evidence (video or storyboard, frames, transcript) on the left, workflow structure (process canvas, entities, lifecycle, rules, actions, open questions) in the center, and a contextual **inspector** with structured editors on the right. Edits auto-save as new workflow versions.
 - **Verify**: review every finding (confirm, reject, or reopen) and approve. Approval is refused server-side while anything is pending or invalid.
 - **Compile**: a real compiler with six measured stages. The **application assembly** panel is built from the compiled manifest.
-- **Operate**: the generated app at `/apps/:slug` has a dashboard, a list for each entity (table on desktop, cards on mobile), generated create and edit forms, a detail view with history, guarded transitions with confirmation, an activity feed that includes rule rejections, sample-data seeding, and a clear-data action behind a confirmation dialog.
+- **Operate**: the generated app at `/apps/:slug` works like a small CRM/ERP:
+  - a dashboard and colour-coded **sections** (the app's categories) in the menu;
+  - for each section, a list (table on desktop, cards on mobile) with **status filters**, **sortable columns** and search;
+  - a **pipeline board** for anything with a lifecycle, with one column per status and the allowed next steps on each card;
+  - **spreadsheet import** (CSV, comma or semicolon). Each row goes through the same rules as the form, and skipped rows are listed with the reason;
+  - CSV export;
+  - generated create and edit forms;
+  - a detail view with **notes** (calls, agreements, reminders) next to the history;
+  - guarded transitions with confirmation;
+  - an activity feed that includes rule rejections;
+  - sample-data seeding;
+  - a clear-data action behind a confirmation dialog.
+- **Improve this app** (owners): one button inside every app.
+  - *Change how it works*: ask in one sentence, record again, or edit in detail.
+  - *Names & colours*: rename the app and each section in your own words and pick their colours. This is stored separately, so it survives recompiling.
+  - *Help*.
+- **My apps**: all apps of the workspace with their sections, record counts, last activity and version. From here you can Open, Change, Copy link or Download each one. A short guide explains the three ways to change a finished app.
+- **Billing & payments** (workspace owner only, checked on the server):
+  - plan, status, next renewal and payment method;
+  - editable billing details;
+  - billing history of every upgrade and plan change.
+
+  Payment isn't connected, so every entry is marked "not charged (demo)". Other users can see the plan but can't change it.
+- **Help & support**: a help centre (FAQ plus contact with Integrint), reachable from the Studio's top bar, Account, and every app's menu and footer.
 - **Evidence & audit page**: an evidence index for every cited finding, and an audit trail of model, compiler and reviewer actions.
 
 ### The first supported workflow: equipment rental
@@ -218,10 +241,10 @@ Studio → Account → AI engine shows whether the configured model is installed
 ## Testing
 
 ```powershell
-cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 34 tests: sign-in and users, Subscription Test Mode, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q          # 36 tests: sign-in and users, Subscription Test Mode, notes, import, section names, owner-only billing, rental cycle, rules, uploads, failure handling, normalization, change requests, export, plans, roles, reports, calendar, webhooks
 cd frontend; npm run typecheck                                 # TypeScript (tsc -b)
-cd frontend; npm test                                          # 9 Vitest tests: schema helpers, workflow ops, SchemaForm
-cd frontend; npx playwright install chromium; npm run test:e2e # 24 Playwright tests: first-admin setup, Subscription Test Mode, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
+cd frontend; npm test                                          # 11 Vitest tests: schema helpers, workflow ops, SchemaForm, CSV parsing
+cd frontend; npx playwright install chromium; npm run test:e2e # 26 Playwright tests: board, filters, notes, import, renaming sections, My apps, billing, help centre, first-admin setup, Subscription Test Mode, sign-in, user management, refused analysis after upload, guided journey, Plus upgrade with team roles, advanced editor, desktop/mobile smoke
 ```
 
 Playwright starts its own backend (:8001, temporary data directory) and Vite server (:5174), so tests never touch your development data.

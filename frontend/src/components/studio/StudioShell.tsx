@@ -1,8 +1,8 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { AppWindow, FlaskConical, House, Plus, UserRound } from 'lucide-react'
+import { AppWindow, FlaskConical, House, LifeBuoy, Plus, UserRound } from 'lucide-react'
 import { BrandMark } from '../ui/primitives'
-import { useAccount } from '../../lib/queries'
+import { useAccount, useMe } from '../../lib/queries'
 import { cn } from '../../lib/cn'
 
 const NAV = [
@@ -14,6 +14,8 @@ const NAV = [
 
 export default function StudioShell() {
   const account = useAccount()
+  const me = useMe()
+  const owner = !!me.data?.user?.super_admin
   const plan = account.data?.plan
   return (
     <div className="min-h-dvh bg-ink-950 text-fg">
@@ -24,12 +26,20 @@ export default function StudioShell() {
             <BrandMark />
           </Link>
           <div className="flex items-center gap-2">
+          <NavLink
+            to="/studio/support"
+            aria-label="Help & support"
+            title="Help & support"
+            className={({ isActive }) => cn('flex size-9 items-center justify-center rounded-full md:order-last', isActive ? 'bg-brand-50 text-accent' : 'text-fg-muted hover:bg-ink-900 hover:text-fg')}
+          >
+            <LifeBuoy className="size-5" />
+          </NavLink>
           {plan && (
             <Link
-              to={plan.id === 'free' ? '/studio/upgrade?plan=plus' : '/studio/settings'}
+              to={plan.id === 'free' && (owner || account.data?.test_mode) ? '/studio/upgrade?plan=plus' : '/studio/settings'}
               className={cn('rounded-full px-3 py-1.5 text-[13px] font-semibold md:order-last', plan.id === 'free' ? 'bg-accent text-white' : 'bg-brand-50 text-accent')}
             >
-              {plan.id === 'free' ? 'Upgrade to Plus' : plan.name}
+              {plan.id === 'free' && (owner || account.data?.test_mode) ? 'Upgrade to Plus' : plan.name}
             </Link>
           )}
           <nav className="hidden items-center gap-1 md:flex" aria-label="Studio">

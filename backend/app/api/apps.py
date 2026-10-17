@@ -14,11 +14,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db import AppMember, AppWebhook, GeneratedApp, get_session
+from ..db import AppCustomization, AppMember, AppWebhook, GeneratedApp, Record, RecordEvent, get_session
 from ..services import access, integrations, plans, reports
 from ..services.auth import require_user
-from ..services.apps import app_summary, can_seed_sample, get_app, seed_sample
-from ..workflow.runtime import AppRuntime
+from ..services.apps import SECTION_COLORS, app_summary, can_seed_sample, customized_manifest, get_app, seed_sample
+from ..workflow.runtime import AppRuntime, RuntimeErrorBase
 
 router = APIRouter(prefix="/api/apps")
 
@@ -47,11 +47,11 @@ def get_application(slug: str, request: Request, s: Session = Depends(get_sessio
         viewer = access.viewer_for(s, app, request)
     except HTTPException:
         # Private app without a valid key: reveal only what the sign-in screen needs.
-        return {"slug": app.slug, "name": app.name, "access_mode": st.access_mode, "locked": True}
+        return {"slug": app.slug, "name": customized_manifest(s, app)["workflow"]["name"], "access_mode": st.access_mode, "locked": True}
     plan = plans.limits(s)
     return {
         **app_summary(s, app),
-        "manifest": app.manifest,
+        "manifest": customized_manifest(s, app),
         "can_seed_sample": can_seed_sample(app),
         "access_mode": st.access_mode,
         "locked": False,
@@ -110,6 +110,102 @@ def transition(slug: str, entity: str, record_id: str, transition: str, request:
     finally:
         _emit(app, rt)
     return {"record": rt.serialize(rec), "effects": effects}
+
+
+# --- notes, import, naming ------------------------------------------------------------------------
+
+
+class Note(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@router.post("/{slug}/records/{entity}/{record_id}/notes", status_code=201)
+def add_note(slug: str, entity: str, record_id: str, body: Note, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """A free-text note on a record (call log, agreement, reminder). Notes never change data or rules."""
+    app, viewer, rt = _ctx(slug, request, s, "create")
+    rec = rt.get(entity, record_id)
+    author = viewer.member.name if viewer.member else access.ROLE_LABELS[viewer.role]
+    ev = RecordEvent(app_id=app.id, record_id=rec.id, entity=entity, kind="note", summary=body.text.strip(), detail={"author": author})
+    s.add(ev)
+    s.commit()
+    return {"id": ev.id, "record_id": rec.id, "entity": entity, "kind": "note", "summary": ev.summary, "detail": ev.detail, "created_at": ev.created_at.isoformat()}
+
+
+class ImportRows(BaseModel):
+    rows: list[dict[str, Any]] = Field(min_length=1, max_length=500)
+
+
+def _resolve_refs(s: Session, rt: AppRuntime, entity: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
+    """Spreadsheet values to stored values: options case-insensitively, linked records by title or code
+    (e.g. "Canon EOS R6" or "ITE-0001") to their ids."""
+    out = dict(row)
+    for f in entity["fields"]:
+        v = out.get(f["key"])
+        if f["type"] == "enum" and isinstance(v, str):  # "camera" -> "Camera"
+            out[f["key"]] = next((o for o in f["options"] if o.lower() == v.strip().lower()), v)
+            continue
+        if f["type"] != "reference" or not isinstance(v, str) or not v.strip():
+            continue
+        target = rt.entities.get(f["ref_entity"])
+        if not target:
+            continue
+        wanted = v.strip().lower()
+        for rec in s.scalars(select(Record).where(Record.app_id == rt.app.id, Record.entity == target["key"])):
+            if rec.id == v.strip() or rt.code_of(rec).lower() == wanted or rt.title_of(rec).lower() == wanted:
+                out[f["key"]] = rec.id
+                break
+    return out
+
+
+@router.post("/{slug}/records/{entity}/import")
+def import_records(slug: str, entity: str, body: ImportRows, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """Bulk create from a spreadsheet. Every row goes through the same validation and rules as the form."""
+    app, _v, rt = _ctx(slug, request, s, "seed")
+    e = rt.entity(entity)
+    labels = {f["label"].strip().lower(): f["key"] for f in e["fields"]}
+    created, errors = 0, []
+    try:
+        for i, raw in enumerate(body.rows, start=1):
+            row = {labels.get(str(k).strip().lower(), str(k).strip()): v for k, v in raw.items() if v not in (None, "")}
+            try:
+                rt.create(entity, _resolve_refs(s, rt, e, row))
+                created += 1
+            except RuntimeErrorBase as err:
+                detail = "; ".join(f"{k}: {m}" for k, m in (err.field_errors or {}).items())
+                errors.append({"row": i, "message": f"{err.message}{f' ({detail})' if detail else ''}"})
+    finally:
+        _emit(app, rt)
+    return {"created": created, "failed": len(errors), "errors": errors[:50]}
+
+
+class SectionName(BaseModel):
+    label: str | None = Field(None, max_length=60)
+    plural_label: str | None = Field(None, max_length=60)
+    color: Literal[SECTION_COLORS] | None = None  # type: ignore[valid-type]
+
+
+class Customize(BaseModel):
+    name: str | None = Field(None, max_length=120)
+    sections: dict[str, SectionName] = Field(default_factory=dict)
+
+
+@router.put("/{slug}/customize")
+def customize(slug: str, body: Customize, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
+    """Rename the app and its sections and pick their colours. The compiled workflow is unchanged."""
+    app, _v, _rt = _ctx(slug, request, s, "admin")
+    keys = {e["key"] for e in app.manifest["entities"]}
+    unknown = set(body.sections) - keys
+    if unknown:
+        raise HTTPException(400, f"Unknown section: {', '.join(sorted(unknown))}.")
+    c = s.get(AppCustomization, app.id) or AppCustomization(app_id=app.id, sections={})
+    c.name = (body.name or "").strip() or None
+    c.sections = {
+        k: {key: (val.strip() if isinstance(val, str) else val) for key, val in v.model_dump().items() if val not in (None, "")}
+        for k, v in body.sections.items()
+    }
+    s.add(c)
+    s.commit()
+    return {"manifest": customized_manifest(s, app), "name": customized_manifest(s, app)["workflow"]["name"]}
 
 
 @router.post("/{slug}/seed-sample")

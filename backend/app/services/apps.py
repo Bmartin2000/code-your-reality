@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import copy
 import re
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..db import GeneratedApp, Project, WorkflowVersion
+from ..db import AppCustomization, GeneratedApp, Project, Record, RecordEvent, WorkflowVersion
 from ..workflow.runtime import AppRuntime
 from ..workflow.sample import SAMPLE_CUSTOMERS, SAMPLE_INVENTORY
 
-__all__ = ["AppRuntime", "activate", "get_app", "seed_sample", "app_summary"]
+__all__ = ["AppRuntime", "activate", "get_app", "seed_sample", "app_summary", "customized_manifest", "SECTION_COLORS"]
+
+# Section colours the owner can pick; the first ones are given out in order by default.
+SECTION_COLORS = ("blue", "teal", "violet", "amber", "rose", "green", "slate")
 
 
 def _slugify(name: str) -> str:
@@ -49,20 +53,52 @@ def get_app(s: Session, slug: str) -> GeneratedApp:
     return app
 
 
+def customization(s: Session, app: GeneratedApp) -> AppCustomization | None:
+    return s.get(AppCustomization, app.id)
+
+
+def display_name(s: Session, app: GeneratedApp) -> str:
+    c = customization(s, app)
+    return (c.name if c and c.name else None) or app.name
+
+
+def customized_manifest(s: Session, app: GeneratedApp) -> dict[str, Any]:
+    """The compiled manifest with the owner's names and colours for the app and its sections."""
+    m = copy.deepcopy(app.manifest)
+    c = customization(s, app)
+    sections = (c.sections if c else None) or {}
+    for i, e in enumerate(m["entities"]):
+        own = sections.get(e["key"], {})
+        e["label"] = own.get("label") or e["label"]
+        e["plural_label"] = own.get("plural_label") or e["plural_label"]
+        e["color"] = own.get("color") if own.get("color") in SECTION_COLORS else SECTION_COLORS[i % len(SECTION_COLORS)]
+    by_key = {e["key"]: e for e in m["entities"]}
+    for v in m.get("views", []):
+        if v.get("entity") in by_key:
+            v["label"] = by_key[v["entity"]]["plural_label"]
+    if c and c.name:
+        m["workflow"]["name"] = c.name
+    return m
+
+
 def app_summary(s: Session, app: GeneratedApp) -> dict[str, Any]:
     wv = s.get(WorkflowVersion, app.workflow_version_id)
     project = s.get(Project, app.project_id)
+    m = customized_manifest(s, app)
+    last = s.scalar(select(func.max(RecordEvent.created_at)).where(RecordEvent.app_id == app.id))
     return {
         "id": app.id,
         "slug": app.slug,
-        "name": app.name,
+        "name": m["workflow"]["name"],
         "is_sample": app.is_sample,
         "project_id": app.project_id,
         "project_origin": project.origin if project else None,
         "workflow_version": wv.version if wv else None,
         "created_at": app.created_at.isoformat(),
         "updated_at": app.updated_at.isoformat(),
-        "entities": [{"key": e["key"], "label": e["label"], "plural_label": e["plural_label"]} for e in app.manifest["entities"]],
+        "entities": [{"key": e["key"], "label": e["label"], "plural_label": e["plural_label"], "color": e["color"]} for e in m["entities"]],
+        "record_count": s.scalar(select(func.count()).select_from(Record).where(Record.app_id == app.id)) or 0,
+        "last_activity_at": last.isoformat() if last else None,
     }
 
 

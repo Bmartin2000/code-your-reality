@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, LogOut, RotateCcw, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, CheckCircle2, CircleAlert, LifeBuoy, LogOut, Receipt, RotateCcw, Sparkles, Users } from 'lucide-react'
 import { ErrorState, LoadingState } from '../../components/ui/primitives'
 import { Button, ButtonLink } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/overlays'
@@ -137,7 +137,7 @@ export default function Settings() {
                   </h2>
                   {acc.company && <p className="mt-1 text-[14px] text-fg-muted">{acc.company} · {acc.billing_email}</p>}
                 </div>
-                {acc.test_mode && plan.id !== 'free' ? null : plan.id === 'free' ? (
+                {!user?.super_admin || (acc.test_mode && plan.id !== 'free') ? null : plan.id === 'free' ? (
                   <ButtonLink to="/studio/upgrade?plan=plus" variant="primary" size="sm">
                     Upgrade
                   </ButtonLink>
@@ -151,7 +151,14 @@ export default function Settings() {
                 <Meter label="Apps" used={acc.usage.apps} max={plan.apps} />
                 <Meter label="Video analyses this month" used={acc.usage.analyses_this_month} max={plan.analyses_per_month} />
               </div>
-              <p className="mt-5 text-[13px] text-fg-subtle">Billing isn’t live in this preview: plans are switched with a demo checkout, and nothing is charged.</p>
+              {user?.super_admin ? (
+                <ButtonLink to="/studio/billing" size="sm" variant="secondary" className="mt-5" icon={<Receipt className="size-4" />}>
+                  Billing & payments
+                </ButtonLink>
+              ) : (
+                <p className="mt-5 text-[13px] text-fg-subtle">The workspace owner manages the plan and billing.</p>
+              )}
+              <p className="mt-3 text-[13px] text-fg-subtle">Billing isn’t live in this preview: plans are switched with a demo checkout, and nothing is charged.</p>
             </>
           )
         )}
@@ -165,9 +172,14 @@ export default function Settings() {
           <div>
             <h2 id="support-title" className="text-[19px] font-semibold">Support by Integrint</h2>
             <p className="mt-1 text-[15px] leading-relaxed text-fg-muted">Stuck with a recording, or the AI misunderstood something? Real people help you get it right.</p>
-            <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[15px] font-medium text-accent">
-              Contact support <ArrowRight className="size-4" />
-            </a>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+              <ButtonLink to="/studio/support" size="sm" variant="secondary">
+                Help centre
+              </ButtonLink>
+              <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[15px] font-medium text-accent">
+                Contact support <ArrowRight className="size-4" />
+              </a>
+            </div>
           </div>
         </div>
       </section>

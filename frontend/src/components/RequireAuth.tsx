@@ -4,7 +4,7 @@ import { ErrorState, LoadingState } from './ui/primitives'
 import { useMe } from '../lib/queries'
 
 /** Shows its children only to a signed-in person; everyone else goes to the sign-in screen. */
-export function RequireAuth({ children, admin = false }: { children: ReactNode; admin?: boolean }) {
+export function RequireAuth({ children, admin = false, founder = false }: { children: ReactNode; admin?: boolean; founder?: boolean }) {
   const me = useMe()
   const location = useLocation()
   if (me.isLoading) return <LoadingState className="min-h-dvh" label="Loading" />
@@ -14,5 +14,6 @@ export function RequireAuth({ children, admin = false }: { children: ReactNode; 
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
   if (admin && me.data.user.role !== 'admin') return <Navigate to="/studio" replace />
+  if (founder && !me.data.user.super_admin) return <Navigate to="/studio/settings" replace />
   return <>{children}</>
 }

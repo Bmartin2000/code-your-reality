@@ -11,7 +11,7 @@ cover_image: https://raw.githubusercontent.com/Bmartin2000/code-your-reality/mas
 
 **Code Your Reality** turns a phone video of how a small business works into a working app.
 
-You film the job once — a clerk renting out a camera, a workshop lending a drill, a repair shop taking in a bike — and say out loud what you check and what must never happen. Google's open-weight **Gemma 4** model watches the video frames and reads the transcript, then proposes what the business keeps track of, how things move along, and its rules. The owner keeps or drops each finding in plain language, presses **Build my app**, and gets a real application: forms, lists, a state machine, and business rules that the **server enforces**. Try to rent the same camera twice and the app refuses, quoting the rule that came from the video.
+You film the job once — a clerk renting out a camera, a workshop lending a drill, a repair shop taking in a bike — and say out loud what you check and what must never happen. Google's open-weight **Gemma 4** model watches the video frames and reads the transcript, then proposes what the business keeps track of, how things move along, and its rules. The owner keeps or drops each finding in plain language, presses **Build my app**, and gets a real application: forms, lists, a state machine, and business rules that the **server enforces**. Try to rent the same camera twice and the app refuses, quoting the rule that came from the video. The app works like a small CRM: a pipeline board, filters, notes on records, and spreadsheet import that goes through the same rules. The owner can rename its sections in the team's own words.
 
 **Who pays for it, and why.** I work at [Integrint](https://integrint.hu), a Hungarian digital agency. Our smallest clients — rental shops, workshops, event-equipment companies — run on paper slips, whiteboards and "ask Peter". They would love custom software, but they can't write a specification, and they can't afford weeks of meetings to produce one. What they *can* do is show us how they work. Code Your Reality turns that into a product:
 
@@ -39,7 +39,7 @@ Run it yourself in a few minutes (Windows, macOS or Linux): the guided example w
 
 {% embed https://github.com/Bmartin2000/code-your-reality %}
 
-FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper and Ollama. One Docker image for servers, plain `pip`/`npm` for local use. Sign-in protects the Studio, so the speech-to-text and the model can't be used anonymously on a public server (the first account becomes admin and adds the rest). 30 backend tests, 9 unit tests and 23 Playwright end-to-end tests, including a full "review → build → rent → refuse → return → reload" journey.
+FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper and Ollama. One Docker image for servers, plain `pip`/`npm` for local use. Sign-in protects the Studio, so the speech-to-text and the model can't be used anonymously on a public server (the first account becomes admin and adds the rest). 36 backend tests, 11 unit tests and 26 Playwright end-to-end tests, including a full "review → build → rent → refuse → return → reload" journey.
 
 ## How I Built It
 

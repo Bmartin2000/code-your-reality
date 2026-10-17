@@ -79,7 +79,9 @@ def test_plus_test_mode_unlocks_plus_only_for_the_founder(client, others):
 
 def test_free_test_mode_applies_free_limits_while_the_workspace_has_plus(client, others):
     admin2, _uma = others
-    admin2.post("/api/account/plan", json={"plan": "plus"})
+    # Only the founder can change the real plan; others are refused.
+    assert admin2.post("/api/account/plan", json={"plan": "plus"}).status_code == 403
+    client.post("/api/account/plan", json={"plan": "plus"})
     _pid, slug = build_app(client, "sample")
     client.put("/api/admin/test-mode", json={"plan": "free"})
 

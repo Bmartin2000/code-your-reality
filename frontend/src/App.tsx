@@ -15,6 +15,8 @@ const RecentApps = lazy(() => import('./pages/studio/RecentApps'))
 const Settings = lazy(() => import('./pages/studio/Settings'))
 const Upgrade = lazy(() => import('./pages/studio/Upgrade'))
 const Users = lazy(() => import('./pages/studio/Users'))
+const Billing = lazy(() => import('./pages/studio/Billing'))
+const Support = lazy(() => import('./pages/studio/Support'))
 const ProjectLayout = lazy(() => import('./pages/studio/project/ProjectLayout'))
 const ProjectHome = lazy(() => import('./pages/studio/project/ProjectHome'))
 const ProjectFlow = lazy(() => import('./pages/studio/project/ProjectFlow'))
@@ -69,6 +71,15 @@ export default function App() {
             <Route path="apps" element={<RecentApps />} />
             <Route path="settings" element={<Settings />} />
             <Route path="upgrade" element={<Upgrade />} />
+            <Route path="support" element={<Support />} />
+            <Route
+              path="billing"
+              element={
+                <RequireAuth founder>
+                  <Billing />
+                </RequireAuth>
+              }
+            />
             <Route
               path="users"
               element={

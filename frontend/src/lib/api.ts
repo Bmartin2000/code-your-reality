@@ -9,6 +9,10 @@ import type {
   AppRecord,
   AppStats,
   AppSummary,
+  BillingInfo,
+  ImportResult,
+  Manifest,
+  SectionColor,
   AuditEvent,
   Capabilities,
   Effect,
@@ -212,6 +216,10 @@ export const api = {
     request<{ record: AppRecord }>('PATCH', `/api/apps/${slug}/records/${entity}/${id}`, payload),
   transition: (slug: string, entity: string, id: string, transition: string) =>
     request<{ record: AppRecord; effects: Effect[] }>('POST', `/api/apps/${slug}/records/${entity}/${id}/transitions/${transition}`),
+  addNote: (slug: string, entity: string, id: string, text: string) => request<RecordEvent>('POST', `/api/apps/${slug}/records/${entity}/${id}/notes`, { text }),
+  importRecords: (slug: string, entity: string, rows: Record<string, string>[]) => request<ImportResult>('POST', `/api/apps/${slug}/records/${entity}/import`, { rows }),
+  customizeApp: (slug: string, body: { name?: string; sections: Record<string, { label?: string; plural_label?: string; color?: SectionColor }> }) =>
+    request<{ manifest: Manifest; name: string }>('PUT', `/api/apps/${slug}/customize`, body),
   seedSample: (slug: string) => request<{ created: Record<string, number> }>('POST', `/api/apps/${slug}/seed-sample`),
   exportUrl: (slug: string) => {
     const key = appKey(slug)
@@ -236,5 +244,7 @@ export const api = {
   checkout: (plan: 'plus' | 'business', company: string, billing_email: string) =>
     request<AccountSummary & { charged: boolean }>('POST', '/api/account/checkout', { plan, company, billing_email }),
   changePlan: (plan: 'free' | 'plus' | 'business') => request<AccountSummary>('POST', '/api/account/plan', { plan }),
+  billing: () => request<BillingInfo>('GET', '/api/account/billing'),
+  updateBilling: (company: string, billing_email: string) => request<BillingInfo>('PUT', '/api/account/billing', { company, billing_email }),
   resetApp: (slug: string) => request<{ deleted: number }>('POST', `/api/apps/${slug}/reset`),
 }

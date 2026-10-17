@@ -6,7 +6,7 @@ import { BarChart3, Check, CreditCard, Info, Link2, RefreshCw, Sparkles, Users }
 import { Button, ButtonLink } from '../../components/ui/Button'
 import { LoadingState } from '../../components/ui/primitives'
 import { api, ApiError } from '../../lib/api'
-import { qk, useAccount, useProjects } from '../../lib/queries'
+import { qk, useAccount, useMe, useProjects } from '../../lib/queries'
 import { PLANS } from '../../lib/plans'
 import { toast } from '../../lib/toast'
 import { cn } from '../../lib/cn'
@@ -22,6 +22,8 @@ export default function Upgrade() {
   const [params] = useSearchParams()
   const [plan, setPlan] = useState<'plus' | 'business'>(params.get('plan') === 'business' ? 'business' : 'plus')
   const account = useAccount()
+  const me = useMe()
+  const owner = !!me.data?.user?.super_admin
   const projects = useProjects()
   const qc = useQueryClient()
   const [company, setCompany] = useState('')
@@ -153,6 +155,9 @@ export default function Upgrade() {
             </span>
           </div>
           <p className="text-[13px] text-fg-subtle">Charged today: €0 (demo)</p>
+          {!owner && !account.data?.test_mode && (
+            <p className="mt-5 rounded-2xl bg-ink-900 p-3 text-[14px] text-fg-muted">Only the workspace owner (the account that created this workspace) can change the plan. Ask them to upgrade.</p>
+          )}
           {account.data?.test_mode && (
             <p className="mt-5 rounded-2xl bg-[#FFF3D6] p-3 text-[14px] text-warning">
               You’re in Subscription Test Mode, so checkout is off and your real plan can’t change. Switch the test plan in{' '}
@@ -162,7 +167,7 @@ export default function Upgrade() {
               .
             </p>
           )}
-          <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" loading={busy} disabled={!!account.data?.test_mode} icon={<Check className="size-5" />}>
+          <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" loading={busy} disabled={!!account.data?.test_mode || !owner} icon={<Check className="size-5" />}>
             Activate {chosen.name}
           </Button>
           <p className="mt-3 text-center text-[13px] text-fg-subtle">

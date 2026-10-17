@@ -35,7 +35,13 @@ import { Reports } from '../../components/app/Reports'
 import { Connections } from '../../components/app/Connections'
 import { Team } from '../../components/app/Team'
 import { PlusGate } from '../../components/studio/PlusGate'
-import { BarChart3, KeyRound, Link2, Users } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, Download, KeyRound, LayoutGrid, LifeBuoy, Link2, List, MessageSquare, Upload, Users, Wand2 } from 'lucide-react'
+import { Board } from '../../components/app/Board'
+import { ImportDialog } from '../../components/app/ImportDialog'
+import { ImproveDialog } from '../../components/app/ImproveDialog'
+import { SectionTile } from '../../components/app/SectionBadge'
+import { sectionColor } from '../../lib/sections'
+import { SUPPORT_URL } from '../../lib/plans'
 
 const can = (app: AppDetail, permission: string) => app.viewer.permissions.includes(permission)
 
@@ -133,6 +139,7 @@ const EVENT_STYLE: Record<RecordEvent['kind'], { cls: string; icon: typeof Check
   transition: { cls: 'text-accent', icon: ArrowRight },
   effect: { cls: 'text-success', icon: Sparkles },
   rejected: { cls: 'text-error', icon: Ban },
+  note: { cls: 'text-[#6247C9]', icon: MessageSquare },
 }
 
 function ActivityFeed({ events, empty }: { events: RecordEvent[]; empty: string }) {
@@ -149,7 +156,14 @@ function ActivityFeed({ events, empty }: { events: RecordEvent[]; empty: string 
                 <s.icon className="size-3" />
               </span>
               <div className="min-w-0">
-                <p className={cn('text-[13px] leading-snug', ev.kind === 'rejected' ? 'text-error' : 'text-fg-muted')}>{ev.summary}</p>
+                {ev.kind === 'note' ? (
+                  <p className="whitespace-pre-wrap rounded-xl bg-[#F7F5FE] px-3 py-2 text-[13.5px] leading-snug text-fg">
+                    {ev.summary}
+                    <span className="mt-1 block text-[11.5px] text-fg-subtle">Note · {String((ev.detail as { author?: string } | null)?.author ?? '')}</span>
+                  </p>
+                ) : (
+                  <p className={cn('text-[13px] leading-snug', ev.kind === 'rejected' ? 'text-error' : 'text-fg-muted')}>{ev.summary}</p>
+                )}
                 {rule && ev.kind !== 'rejected' && <p className="mt-0.5 text-[11.5px] text-fg-subtle">Rule: {rule.statement}</p>}
                 <time className="meta" dateTime={ev.created_at} title={clockTime(ev.created_at)}>
                   {relativeTime(ev.created_at)}
@@ -246,9 +260,12 @@ function Overview({ slug, app }: { slug: string; app: AppDetail }) {
                 : e.fields.find((f) => f.key === effectTarget && f.type === 'enum') ?? e.fields.find((f) => f.type === 'enum' && f.options.length <= 6)
               const breakdown = enumField ? s.breakdown[enumField.key] : undefined
               return (
-                <Link key={e.key} to={`/apps/${slug}/${e.key}`} className="surface group rounded-2xl p-5 transition-colors hover:border-line">
-                  <div className="flex items-center justify-between">
-                    <TechnicalLabel>{e.plural_label}</TechnicalLabel>
+                <Link key={e.key} to={`/apps/${slug}/${e.key}`} className={cn('group rounded-2xl border p-5 transition-colors hover:border-line', sectionColor(e.color).soft, sectionColor(e.color).border)}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <SectionTile entity={e} />
+                      <span className={cn('truncate text-[16px] font-semibold', sectionColor(e.color).text)}>{e.plural_label}</span>
+                    </span>
                     <ChevronRight className="size-4 text-fg-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-fg" />
                   </div>
                   <p className="mt-3 font-mono text-4xl tabular-nums tracking-tight text-fg">{s.total}</p>
@@ -423,42 +440,117 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
   const records = useQuery({ queryKey: qk.records(slug, key ?? ''), queryFn: () => api.records(slug, key!), enabled: !!entity })
   const [q, setQ] = useState('')
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [mode, setMode] = useState<'list' | 'board'>(() => (storageGet(`cyr.view.${slug}.${key}`) === 'board' ? 'board' : 'list'))
+  const [filter, setFilter] = useState<string | null>(null)
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null)
   const navigate = useNavigate()
+  const invalidate = useInvalidateApp(slug)
   const transition = useTransition(slug, app, entity ?? app.manifest.entities[0])
   const [confirm, setConfirm] = useState<{ rec: AppRecord; key: string; label: string } | null>(null)
+  // Filter by the status for workflow sections, otherwise by a short list of options.
+  const filterField = entity ? (entity.state ? entity.fields.find((f) => f.key === entity.state!.field) : entity.fields.find((f) => f.type === 'enum' && f.options.length <= 8)) : undefined
 
-  const rows = useMemo(() => (records.data ?? []).filter((r) => !q || JSON.stringify([r.title, r.code, r.data, Object.values(r.refs).map((x) => x.title)]).toLowerCase().includes(q.toLowerCase())), [records.data, q])
+  const rows = useMemo(() => {
+    const needle = q.toLowerCase()
+    let out = (records.data ?? []).filter((r) => !q || JSON.stringify([r.title, r.code, r.data, Object.values(r.refs).map((x) => x.title)]).toLowerCase().includes(needle))
+    if (filter && filterField) out = out.filter((r) => String(r.data[filterField.key]) === filter)
+    if (sort) {
+      const value = (r: AppRecord) => (r.refs[sort.key]?.title ?? r.data[sort.key] ?? '') as string | number
+      out = [...out].sort((a, b) => {
+        const x = value(a)
+        const y = value(b)
+        return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true })) * sort.dir
+      })
+    }
+    return out
+  }, [records.data, q, filter, filterField, sort])
   if (!entity) return <EmptyState title="Unknown view" body="This application has no such section." action={<ButtonLink to={`/apps/${slug}`}>Back to overview</ButtonLink>} />
   const view = app.manifest.views.find((v) => v.entity === entity.key)
   const columns = (view?.columns ?? []).map((c) => entity.fields.find((f) => f.key === c)!).filter(Boolean)
+  const color = sectionColor(entity.color)
+  const all = records.data ?? []
+  const counts: Record<string, number> = filterField ? Object.fromEntries(filterField.options.map((o) => [o, all.filter((r) => String(r.data[filterField.key]) === o).length])) : {}
+  const switchMode = (m: 'list' | 'board') => {
+    setMode(m)
+    storageSet(`cyr.view.${slug}.${entity.key}`, m)
+  }
+  const sortBy = (k: string) => setSort((s) => (s?.key === k ? (s.dir === 1 ? { key: k, dir: -1 } : null) : { key: k, dir: 1 }))
 
   return (
     <div>
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <TechnicalLabel>{entity.label} directory</TechnicalLabel>
-          <h1 className="display mt-2 text-[clamp(1.8rem,3vw,2.6rem)] leading-[1.05]">{entity.plural_label}</h1>
+      <div className={cn('flex flex-col gap-4 rounded-3xl border p-5 md:flex-row md:items-center md:justify-between', color.soft, color.border)}>
+        <div className="flex min-w-0 items-center gap-4">
+          <SectionTile entity={entity} size="lg" />
+          <div className="min-w-0">
+            <h1 className="display truncate text-[clamp(1.7rem,3vw,2.4rem)] leading-[1.05]">{entity.plural_label}</h1>
+            <p className="mt-1 text-[14px] text-fg-muted">
+              {all.length} {all.length === 1 ? entity.label.toLowerCase() : entity.plural_label.toLowerCase()}
+              {entity.description ? ` · ${entity.description}` : ''}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-subtle" />
-            <input className="field-input w-full pl-8 sm:w-60" placeholder={`Search ${entity.plural_label.toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} aria-label={`Search ${entity.plural_label}`} />
-          </label>
-          {can(app, 'create') && <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>
-            New
-          </Button>}
+        <div className="flex flex-wrap gap-2">
+          {can(app, 'seed') && (
+            <Button icon={<Upload className="size-4" />} onClick={() => setImporting(true)}>
+              Import
+            </Button>
+          )}
+          <a href={api.csvUrl(`/api/apps/${slug}/export/${entity.key}.csv`, slug)} className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-[14px] font-medium text-fg ring-1 ring-line-soft hover:ring-line">
+            <Download className="size-4" /> Export
+          </a>
+          {can(app, 'create') && (
+            <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>
+              New {entity.label.toLowerCase()}
+            </Button>
+          )}
         </div>
       </div>
-      <div className="mt-6">
+
+      <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter">
+          {filterField && (
+            <>
+              <button onClick={() => setFilter(null)} aria-pressed={!filter} className={cn('rounded-full px-3 py-1.5 text-[13px] font-medium', !filter ? 'bg-fg text-white' : 'bg-ink-900 text-fg-muted hover:text-fg')}>
+                All <span className="opacity-70">{all.length}</span>
+              </button>
+              {filterField.options.map((o) => (
+                <button key={o} onClick={() => setFilter(filter === o ? null : o)} aria-pressed={filter === o} className={cn('rounded-full px-3 py-1.5 text-[13px] font-medium', filter === o ? 'bg-fg text-white' : 'bg-ink-900 text-fg-muted hover:text-fg')}>
+                  {stateLabel(entity, filterField, o)} <span className="opacity-70">{counts[o]}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <label className="relative block flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-fg-subtle" />
+            <input className="field-input w-full pl-8 lg:w-60" placeholder={`Search ${entity.plural_label.toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} aria-label={`Search ${entity.plural_label}`} />
+          </label>
+          {entity.state && (
+            <div className="flex shrink-0 rounded-full bg-ink-900 p-1" role="group" aria-label="Layout">
+              <button onClick={() => switchMode('list')} aria-pressed={mode === 'list'} className={cn('flex items-center gap-1 rounded-full px-3 text-[13px] font-medium', mode === 'list' ? 'bg-white text-fg shadow-sm' : 'text-fg-muted')}>
+                <List className="size-4" /> List
+              </button>
+              <button onClick={() => switchMode('board')} aria-pressed={mode === 'board'} className={cn('flex items-center gap-1 rounded-full px-3 text-[13px] font-medium', mode === 'board' ? 'bg-white text-fg shadow-sm' : 'text-fg-muted')}>
+                <LayoutGrid className="size-4" /> Board
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="mt-5">
         {records.isLoading ? (
           <LoadingState />
         ) : records.isError ? (
           <ErrorState error={records.error} onRetry={() => records.refetch()} />
+        ) : entity.state && mode === 'board' && all.length > 0 ? (
+          <Board slug={slug} entity={entity} rows={rows} columns={columns.map((c) => c.key)} canMove={can(app, 'transition')} onMove={(rec, k, label) => setConfirm({ rec, key: k, label })} />
         ) : rows.length === 0 ? (
           <EmptyState
             icon={<Database className="size-5" />}
-            title={q ? 'No matches' : `No ${entity.plural_label.toLowerCase()} yet`}
-            body={q ? 'Try a different search.' : entity.description}
+            title={q || filter ? 'No matches' : `No ${entity.plural_label.toLowerCase()} yet`}
+            body={q || filter ? 'Try a different search or filter.' : entity.description}
             action={!q && can(app, 'create') && <Button variant="primary" onClick={() => setCreating(true)} icon={<Plus className="size-4" />}>Create the first one</Button>}
           />
         ) : (
@@ -470,8 +562,11 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
                   <tr className="border-b border-line-soft">
                     <th scope="col" className="meta px-4 py-3 font-normal">ID</th>
                     {columns.map((c) => (
-                      <th key={c.key} scope="col" className="meta px-4 py-3 font-normal">
-                        {c.label}
+                      <th key={c.key} scope="col" className="meta px-4 py-3 font-normal" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}>
+                        <button onClick={() => sortBy(c.key)} className="inline-flex items-center gap-1 uppercase hover:text-fg">
+                          {c.label}
+                          {sort?.key === c.key && (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
+                        </button>
                       </th>
                     ))}
                     {entity.state && <th scope="col" className="sr-only">Actions</th>}
@@ -548,6 +643,7 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
         )}
       </div>
       <CreateDialog slug={slug} app={app} entity={entity} open={creating} onClose={() => setCreating(false)} />
+      <ImportDialog slug={slug} entity={entity} open={importing} onClose={() => setImporting(false)} onDone={invalidate} />
       <ConfirmDialog
         open={!!confirm}
         onClose={() => setConfirm(null)}
@@ -562,6 +658,55 @@ function EntityList({ slug, app }: { slug: string; app: AppDetail }) {
 }
 
 // --- Detail ---------------------------------------------------------------------------------
+
+function storageGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function storageSet(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    /* storage unavailable: the choice just isn't remembered */
+  }
+}
+
+/** CRM-style note on a record: calls, agreements, reminders. Notes never change data or rules. */
+function NoteComposer({ slug, entity, id, onSaved }: { slug: string; entity: string; id: string; onSaved: () => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!text.trim()) return
+    setBusy(true)
+    try {
+      await api.addNote(slug, entity, id, text.trim())
+      setText('')
+      onSaved()
+    } catch (err) {
+      toast.error('Could not save the note', (err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={save} className="mb-5">
+      <label htmlFor="note" className="sr-only">
+        Add a note
+      </label>
+      <textarea id="note" className="field-input min-h-[72px] text-[14px]" placeholder="Add a note: a call, an agreement, a reminder…" maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} />
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" variant="primary" loading={busy} disabled={!text.trim()} icon={<MessageSquare className="size-3.5" />}>
+          Add note
+        </Button>
+      </div>
+    </form>
+  )
+}
 
 function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
   const { entity: key, id } = useParams()
@@ -584,7 +729,8 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
 
   return (
     <div>
-      <Link to={`/apps/${slug}/${entity.key}`} className="inline-flex items-center gap-1.5 text-[13px] text-fg-muted hover:text-fg">
+      <Link to={`/apps/${slug}/${entity.key}`} className={cn('inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[13px] font-medium', sectionColor(entity.color).tile)}>
+        <SectionTile entity={entity} size="sm" className="bg-white/70" />
         <ArrowLeft className="size-3.5" /> {entity.plural_label}
       </Link>
       <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -635,8 +781,9 @@ function RecordDetail({ slug, app }: { slug: string; app: AppDetail }) {
             </div>
           )}
         </section>
-        <section className="surface rounded-2xl p-5 lg:col-span-5" aria-label="History">
-          <TechnicalLabel className="mb-4 block">History</TechnicalLabel>
+        <section className="surface rounded-2xl p-5 lg:col-span-5" aria-label="Notes and history">
+          <TechnicalLabel className="mb-4 block">Notes & history</TechnicalLabel>
+          {can(app, 'create') && <NoteComposer slug={slug} entity={entity.key} id={record.id} onSaved={() => q.refetch()} />}
           <ActivityFeed events={history} empty="No history yet." />
         </section>
       </div>
@@ -722,6 +869,7 @@ export default function GeneratedAppPage() {
     }
   }, [linkKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const app = useQuery({ queryKey: qk.app(slug), queryFn: () => api.app(slug), enabled: !linkKey })
+  const [improving, setImproving] = useState(false)
 
   if (app.isLoading || linkKey) return <LoadingState className="min-h-dvh" label="Starting application" />
   if (app.isError)
@@ -753,8 +901,12 @@ export default function GeneratedAppPage() {
     { key: 'connections', label: 'Connections', icon: Link2, show: can(a, 'admin'), plus: !a.features.integrations },
     { key: 'team', label: 'Team', icon: Users, show: can(a, 'admin'), plus: !a.features.team },
   ].filter((x) => x.show)
+  const sections = a.manifest.views
+    .filter((v) => v.entity)
+    .map((v) => ({ key: v.key, label: v.label, to: `/apps/${slug}/${v.entity}`, entity: a.manifest.entities.find((e) => e.key === v.entity)! }))
   const nav = [
-    ...a.manifest.views.map((v) => ({ key: v.key, label: v.label, to: v.entity ? `/apps/${slug}/${v.entity}` : `/apps/${slug}`, end: !v.entity, icon: v.entity ? Database : LayoutDashboard, plus: false })),
+    { key: 'overview', label: 'Overview', to: `/apps/${slug}`, end: true, icon: LayoutDashboard, plus: false },
+    ...sections.map((v) => ({ key: v.key, label: v.label, to: v.to, end: false, icon: Database, plus: false })),
     ...extra.map((x) => ({ key: x.key, label: x.label, to: `/apps/${slug}/${x.key}`, end: true, icon: x.icon, plus: x.plus })),
   ]
   const roleLabel = { owner: 'Owner', manager: 'Manager', staff: 'Staff', viewer: 'Viewer' }[a.viewer.role]
@@ -780,6 +932,12 @@ export default function GeneratedAppPage() {
               </span>
             )}
             {can(a, 'admin') && (
+              <Button size="sm" variant="primary" icon={<Wand2 className="size-4" />} onClick={() => setImproving(true)}>
+                <span className="hidden sm:inline">Improve this app</span>
+                <span className="sm:hidden">Improve</span>
+              </Button>
+            )}
+            {can(a, 'admin') && (
               <Link to={`/studio/projects/${a.project_id}`} className="flex items-center gap-2 rounded-full border border-line-soft px-2.5 py-1 text-[12px] text-fg-muted hover:border-line hover:text-fg" title="Open the source workflow in Code Your Reality">
                 <BrandMark withWord={false} className="[&_svg]:size-4" />
                 <span className="hidden sm:inline">Source v{a.workflow_version}</span>
@@ -797,19 +955,43 @@ export default function GeneratedAppPage() {
       </header>
       <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[210px_1fr] lg:px-8 lg:py-10">
         <nav className="hidden lg:block" aria-label="Application sections">
-          <ul className="sticky top-24 space-y-0.5">
-            {nav.map((v) => (
-              <li key={v.key}>
-                <NavLink to={v.to} end={v.end} className={({ isActive }) => cn('flex h-10 items-center gap-2.5 rounded-xl px-3 text-[14px] transition-colors', isActive ? 'bg-brand-50 font-medium text-accent' : 'text-fg-muted hover:bg-ink-900 hover:text-fg')}>
-                  <v.icon className="size-4" />
-                  {v.label}
-                  {v.plus && <span className="ml-auto rounded-full bg-fg px-1.5 py-0.5 text-[10px] font-semibold text-white">Plus</span>}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+          <div className="sticky top-24 space-y-5">
+            <NavLink to={`/apps/${slug}`} end className={({ isActive }) => cn('flex h-10 items-center gap-2.5 rounded-xl px-3 text-[14px] font-medium transition-colors', isActive ? 'bg-brand-50 text-accent' : 'text-fg-muted hover:bg-ink-900 hover:text-fg')}>
+              <LayoutDashboard className="size-4" /> Overview
+            </NavLink>
+            <div>
+              <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-subtle">Sections</p>
+              <ul className="space-y-1">
+                {sections.map((v) => (
+                  <li key={v.key}>
+                    <NavLink to={v.to} className={({ isActive }) => cn('flex items-center gap-3 rounded-2xl p-2 text-[15px] font-semibold transition-colors', isActive ? cn(sectionColor(v.entity.color).soft, sectionColor(v.entity.color).text, 'ring-1', sectionColor(v.entity.color).border.replace('border-', 'ring-')) : 'text-fg hover:bg-ink-900')}>
+                      <SectionTile entity={v.entity} />
+                      <span className="truncate">{v.label}</span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {extra.length > 0 && (
+              <ul className="space-y-0.5 border-t border-line-soft pt-4">
+                {extra.map((v) => (
+                  <li key={v.key}>
+                    <NavLink to={`/apps/${slug}/${v.key}`} end className={({ isActive }) => cn('flex h-10 items-center gap-2.5 rounded-xl px-3 text-[14px] transition-colors', isActive ? 'bg-brand-50 font-medium text-accent' : 'text-fg-muted hover:bg-ink-900 hover:text-fg')}>
+                      <v.icon className="size-4" />
+                      {v.label}
+                      {v.plus && <span className="ml-auto rounded-full bg-fg px-1.5 py-0.5 text-[10px] font-semibold text-white">Plus</span>}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="flex h-10 items-center gap-2.5 rounded-xl px-3 text-[14px] text-fg-muted hover:bg-ink-900 hover:text-fg">
+              <LifeBuoy className="size-4" /> Help & support
+            </a>
+          </div>
         </nav>
         <main id="main" className="min-w-0">
+          {can(a, 'admin') && <ImproveDialog key={improving ? 'open' : 'closed'} app={a} open={improving} onClose={() => setImproving(false)} />}
           <Routes>
             <Route index element={<Overview slug={slug} app={a} />} />
             <Route path="reports" element={a.features.reports ? <Reports slug={slug} /> : <ReportsGate />} />
@@ -818,6 +1000,12 @@ export default function GeneratedAppPage() {
             <Route path=":entity" element={<EntityList slug={slug} app={a} />} />
             <Route path=":entity/:id" element={<RecordDetail slug={slug} app={a} />} />
           </Routes>
+          <footer className="mt-16 flex flex-col items-center justify-between gap-2 border-t border-line-soft pt-5 text-[12.5px] text-fg-subtle sm:flex-row">
+            <span>Made with Code Your Reality · business rules checked on the server</span>
+            <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="hover:text-accent">
+              Support by Integrint
+            </a>
+          </footer>
         </main>
       </div>
     </div>
