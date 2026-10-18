@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     ollama_model: str = Field("gemma4:e4b", validation_alias=env("OLLAMA_MODEL", "OLLAMA_MODEL"))
     # Whether to send video frames: "auto" asks the server (/api/show); set true/false when the server can't say (Ollama Cloud).
     ollama_vision: Literal["auto", "true", "false"] = Field("auto", validation_alias=env("OLLAMA_VISION", "OLLAMA_VISION"))
+    # Structured outputs (JSON schema in "format"): auto = on for local Ollama, off for Ollama Cloud, which
+    # doesn't support them; then the schema goes into the prompt and answers are validated and repaired.
+    ollama_structured_outputs: Literal["auto", "true", "false"] = Field("auto", validation_alias=env("OLLAMA_STRUCTURED_OUTPUTS", "OLLAMA_STRUCTURED_OUTPUTS"))
     ollama_timeout_seconds: int = Field(600, validation_alias=env("OLLAMA_TIMEOUT_SECONDS", "OLLAMA_TIMEOUT_SECONDS"))
     model_temperature: float = Field(0.1, validation_alias=env("MODEL_TEMPERATURE"))
 

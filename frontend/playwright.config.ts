@@ -11,6 +11,7 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 90_000,
   fullyParallel: false,
+  workers: 2, // more workers make cold Vite starts flaky on a laptop that also runs the dev servers
   reporter: 'list',
   use: { baseURL: 'http://localhost:5174', trace: 'retain-on-failure' },
   projects: [
@@ -26,7 +27,8 @@ export default defineConfig({
     {
       command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --app-dir ${JSON.stringify(path.resolve("..", "backend"))}`,
       url: 'http://127.0.0.1:8001/api/health',
-      env: { RC_DATA_DIR: dataDir, RC_WHISPER_ENABLED: 'false', RC_CORS_ORIGINS: 'http://localhost:5174' },
+      // Offline: never the model server or key from a local .env.
+      env: { RC_DATA_DIR: dataDir, RC_WHISPER_ENABLED: 'false', RC_CORS_ORIGINS: 'http://localhost:5174', RC_OLLAMA_URL: 'http://127.0.0.1:9', OLLAMA_API_KEY: '' },
       reuseExistingServer: false,
     },
     {

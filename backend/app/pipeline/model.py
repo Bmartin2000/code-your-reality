@@ -20,6 +20,7 @@ from typing import Any, Callable
 import httpx
 
 from ..config import get_settings
+from . import jsonrepair
 from ..workflow.schema import FIELD_TYPES, RULE_KINDS
 
 SOURCE_ENUM = {"type": "string", "enum": ["observed", "narration", "inferred"]}
@@ -200,6 +201,7 @@ class ModelStatus:
     cloud: bool = False
     api_key_configured: bool = False  # never the key itself
     capabilities_source: str = "server"  # server | config | unknown
+    structured_outputs: bool = True  # False: schema in the prompt + validate-and-repair (Ollama Cloud)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -249,6 +251,9 @@ class OllamaProvider:
         key = s.ollama_api_key.get_secret_value().strip() if s.ollama_api_key else ""
         self._headers = {"Authorization": f"Bearer {key}"} if key else {}
         self.cloud = "ollama.com" in self.url
+        # Ollama Cloud doesn't support structured outputs (docs.ollama.com/capabilities/structured-outputs).
+        self.structured = s.ollama_structured_outputs == "true" or (s.ollama_structured_outputs == "auto" and not self.cloud)
+        self.max_repairs = 2
 
     def status(self, *, fresh: bool = False) -> ModelStatus:
         """Model availability, cached briefly so status polling never hammers the model server."""
@@ -263,7 +268,7 @@ class OllamaProvider:
         return result
 
     def _status(self, reachable: bool, installed: bool, vision: bool, error: str | None = None, names: list[str] | None = None, thinking: bool = False, source: str = "server") -> ModelStatus:
-        return ModelStatus(reachable, self.url, self.model, installed, vision, error, names, thinking, self.cloud, bool(self._headers), source)
+        return ModelStatus(reachable, self.url, self.model, installed, vision, error, names, thinking, self.cloud, bool(self._headers), source, self.structured)
 
     def _probe(self) -> ModelStatus:
         try:
@@ -295,17 +300,51 @@ class OllamaProvider:
             vision, source = False, "unknown"  # set OLLAMA_VISION=true to send frames to a vision model
         return self._status(True, True, vision, None, names, "thinking" in (caps or []), source)
 
-    def _chat(self, system: str, user: str, schema: dict[str, Any], images: list[str] | None = None) -> dict[str, Any]:
+    def _chat(self, system: str, user: str, schema: dict[str, Any], images: list[str] | None = None, on_progress: Callable[[str], None] | None = None) -> dict[str, Any]:
+        """One JSON answer that fits `schema`.
+
+        With structured outputs (local Ollama) the decoder is constrained by the schema. Without them
+        (Ollama Cloud) the schema is part of the prompt, and the answer is validated here; a bounded
+        number of repair turns tell the model exactly what didn't fit. If it still doesn't fit, the best
+        answer is returned anyway: the normalizer treats model output as untrusted and drops what's invalid.
+        """
         message: dict[str, Any] = {"role": "user", "content": user}
         if images:
             message["images"] = images
+        messages: list[dict[str, Any]] = [{"role": "system", "content": system if self.structured else system + jsonrepair.schema_instructions(schema)}, message]
+        if self.structured:
+            return self._request(messages, schema)
+        best: dict[str, Any] | None = None
+        best_errors: list[str] | None = None
+        for attempt in range(self.max_repairs + 1):
+            content = self._request(messages, None)
+            try:
+                data = jsonrepair.extract_json(content)
+                errors = jsonrepair.validate(data, schema) if isinstance(data, dict) else ["$: expected a JSON object"]
+            except ValueError:
+                data, errors = None, ["$: the answer is not valid JSON"]
+            if isinstance(data, dict) and (best_errors is None or len(errors) < len(best_errors)):
+                best, best_errors = data, errors
+            if not errors:
+                return data
+            if attempt < self.max_repairs:
+                if on_progress:
+                    on_progress(f"Answer didn't fit the format ({len(errors)} issue(s)); asking the model to fix it ({attempt + 1}/{self.max_repairs})")
+                messages = messages + [{"role": "assistant", "content": content[:20000]}, {"role": "user", "content": jsonrepair.repair_message(errors)}]
+        if best is None:
+            raise ValueError("The model did not return valid JSON, even after asking it to correct its answer.")
+        return best
+
+    def _request(self, messages: list[dict[str, Any]], schema: dict[str, Any] | None) -> Any:
+        """POST /api/chat. With a schema: the parsed JSON object; without: the raw answer text."""
         body: dict[str, Any] = {
             "model": self.model,
-            "messages": [{"role": "system", "content": system}, message],
-            "format": schema,
+            "messages": messages,
             "stream": False,
             "options": {"temperature": self.temperature, "num_ctx": 16384},
         }
+        if schema is not None:
+            body["format"] = schema
         if self.status().thinking:
             body["think"] = False  # structured extraction doesn't need visible reasoning; only sent to models that support the flag
         try:
@@ -321,6 +360,8 @@ class OllamaProvider:
         if resp.status_code != 200:
             raise ModelUnavailable(f"Model server returned {resp.status_code}: {resp.text[:300]}")
         content = (resp.json().get("message") or {}).get("content", "")
+        if schema is None:
+            return content
         try:
             data = json.loads(content)
         except json.JSONDecodeError as exc:
@@ -353,6 +394,7 @@ class OllamaProvider:
             f"{frame_note}\n\nSOURCE SEGMENTS:\n{source_text}\n\nReturn the JSON object.",
             schema_pass_a(len(sources), n_frames),
             frames_b64[:n_frames] if n_frames else None,
+            progress,
         )
 
         structure = json.dumps(
@@ -371,6 +413,7 @@ class OllamaProvider:
             PROMPT_B,
             f"DATA STRUCTURE:\n{structure}\n\nSOURCE SEGMENTS:\n{source_text}\n\nReturn the JSON object.",
             schema_pass_b(pass_a, len(sources), n_frames),
+            on_progress=progress,
         )
         return {**pass_a, "rules": pass_b.get("rules") or [], "actions": pass_b.get("actions") or []}
 

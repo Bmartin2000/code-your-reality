@@ -9,6 +9,8 @@ _tmp = tempfile.mkdtemp(prefix="rc-test-")
 os.environ["RC_DATA_DIR"] = _tmp
 os.environ["RC_OLLAMA_URL"] = "http://127.0.0.1:9"  # unreachable on purpose: tests never call a real model
 os.environ["RC_WHISPER_ENABLED"] = "false"
+os.environ["OLLAMA_API_KEY"] = ""  # a local .env may hold a real key: tests never use it
+os.environ["OLLAMA_STRUCTURED_OUTPUTS"] = "auto"
 
 from fastapi.testclient import TestClient  # noqa: E402
 

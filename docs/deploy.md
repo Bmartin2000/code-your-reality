@@ -39,6 +39,8 @@ OLLAMA_API_KEY=your-key-here
 OLLAMA_MODEL=gemma4:31b
 # Ollama Cloud may not report model capabilities; set true for a vision model so frames are sent.
 OLLAMA_VISION=true
+# Ollama Cloud has no structured outputs: auto puts the schema in the prompt and validates/repairs answers.
+OLLAMA_STRUCTURED_OUTPUTS=auto
 
 WHISPER_MODEL=base
 WHISPER_DEVICE=cpu

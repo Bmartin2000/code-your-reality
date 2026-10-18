@@ -238,6 +238,15 @@ The API key is read only by the backend from the environment. It's git-ignored, 
 | `qwen3.5:4b` | ~6.5 min | Entities found, but the lifecycle was attached to the wrong entity |
 | `gemma4:e4b`, change request | 50 s | "Members should also give an email address, and it is required" became one new required field |
 | `gemma4:e4b`, oversized request | 46 s | "Build me a complete accounting system…" was refused, and nothing was changed |
+| `gemma4:31b` on **Ollama Cloud** (same clip, transcript and 6 frames) | 7.7 s | Tool, Member and Loan with correct references; loan lifecycle; **all 6 rules mapped to enforceable kinds** (availability check, exclusivity, both card updates, minimum deposit, date order), each citing its segment; fit the schema on the first answer, no repair needed. One run. |
+
+**Ollama Cloud and structured outputs.** Ollama Cloud doesn't support structured outputs ([docs](https://docs.ollama.com/capabilities/structured-outputs)), so the schema can't constrain the decoder there. With `OLLAMA_STRUCTURED_OUTPUTS=auto` (the default), the app detects Cloud and switches strategy:
+- the same JSON schema goes into the system prompt;
+- the answer is parsed leniently (code fences and stray prose are tolerated);
+- it is validated on the server against the schema (no extra dependency);
+- if it doesn't fit, the model gets at most two repair turns that list exactly what was wrong (for example `$.rules[2].ref_field: 'tool_id' is not allowed; use one of [...]`).
+
+After that, the best answer goes to the same normalizer that treats every model answer as untrusted. Local Ollama keeps decoding against the schema.
 4. Review the proposal in the workspace. Items the model cited show their transcript quote and timestamp, and claims of direct evidence without a citation are downgraded to *AI inference*. Correct whatever is wrong, approve, and compile.
 
 ### Choosing a model

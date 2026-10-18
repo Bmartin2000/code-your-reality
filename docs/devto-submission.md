@@ -62,6 +62,9 @@ FastAPI + SQLite backend, React + TypeScript frontend, FFmpeg, faster-whisper an
 
 - Gemma 4 E4B: ~8.4 minutes for the two passes. It found Tool, Member and Loan with correct references, put the lifecycle on the loan, and cited a transcript timestamp for all 9 rules. Two of them mapped straight to enforceable rules (the deposit can't be negative; a new loan records today's date); one proposed effect was wrong and is exactly the kind of thing the review step catches; the rest were kept as notes for the owner to confirm.
 - A change request ("members should also give an email address, and it is required") took 50 seconds and produced exactly one new required field.
+- **Gemma 4 31B on Ollama Cloud**, same clip (transcript and 6 frames): 7.7 seconds. All 6 rules came back as enforceable kinds, from "a tool can only be lent to one member at a time" to "returning it turns the card back to available", each citing its transcript segment.
+
+  Ollama Cloud doesn't support structured outputs, so there the schema goes into the prompt instead. The server validates the answer against it and, if needed, asks for at most two repairs that name exactly what didn't fit. This run fit on the first try.
 
 Small local models are good at structure and less consistent at rules — which is exactly why the human review step and the evidence quotes exist.
 
