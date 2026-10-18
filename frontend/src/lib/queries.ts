@@ -22,13 +22,24 @@ export const qk = {
 
 const ACTIVE = new Set(['analyzing', 'compiling'])
 
+/**
+ * Polling that gets slower the longer a job runs: 1.5 s, 2 s, 3 s, 5 s, 8 s, then every 10 s.
+ * An analysis takes minutes, so this is a handful of requests a minute instead of several a second.
+ * TanStack Query pauses it while the tab is hidden, and the server answers unchanged polls with 304.
+ */
+export const BACKOFF_MS = [1500, 2000, 3000, 5000, 8000, 10000]
+export function backoff(polls: number) {
+  return BACKOFF_MS[Math.min(polls, BACKOFF_MS.length - 1)]
+}
+
 export function useProject(id: string | undefined) {
   return useQuery({
     queryKey: qk.project(id ?? ''),
     queryFn: () => api.project(id!),
     enabled: !!id,
-    // Poll while the backend reports a running job; stop as soon as it settles.
-    refetchInterval: (q) => (q.state.data && ACTIVE.has(q.state.data.status) ? 900 : false),
+    // While a job runs, the job itself is polled (useJob) and refreshes the project when it ends;
+    // this is only a slow safety net, e.g. for a job started in another tab.
+    refetchInterval: (q) => (q.state.data && ACTIVE.has(q.state.data.status) ? 15000 : false),
   })
 }
 
@@ -47,7 +58,7 @@ export function useJob(id: string | undefined | null) {
     enabled: !!id,
     refetchInterval: (q) => {
       const s = (q.state.data as Job | undefined)?.status
-      return s === 'succeeded' || s === 'failed' ? false : 600
+      return s === 'succeeded' || s === 'failed' ? false : backoff(q.state.dataUpdateCount)
     },
   })
 }

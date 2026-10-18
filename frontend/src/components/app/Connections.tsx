@@ -8,6 +8,7 @@ import { PlusGate } from '../studio/PlusGate'
 import { toast } from '../../lib/toast'
 import { timecode } from '../../lib/format'
 import { cn } from '../../lib/cn'
+import { absoluteApiUrl } from '../../lib/config'
 
 function CopyField({ value }: { value: string }) {
   return (
@@ -107,7 +108,7 @@ export function Connections({ slug }: { slug: string }) {
               <CalendarDays className="size-5 text-accent" /> Calendar (Google, Outlook, Apple)
             </h2>
             <p className="mt-1 text-[15px] text-fg-muted">Subscribe to this address in your calendar app (“Add calendar → From URL”). Every date field appears as an all-day event. The server must be reachable from the calendar service.</p>
-            {d.calendar_path && <CopyField value={`${window.location.origin}${d.calendar_path}`} />}
+            {d.calendar_path && <CopyField value={absoluteApiUrl(d.calendar_path)} />}
           </section>
 
           <section className="rounded-3xl bg-ink-900 p-5">

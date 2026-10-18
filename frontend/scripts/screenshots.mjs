@@ -1,4 +1,4 @@
-// Captures the README screenshots from a running dev setup (backend :8000, Vite :5173).
+// Captures the README screenshots from a running dev setup (backend :7413, Vite :5173).
 // Prepares a fresh guided sample through the public API: review, approve, compile, operate.
 // The Studio needs a signed-in user: CYR_EMAIL / CYR_PASSWORD (registered as admin on a fresh database).
 // Usage: CYR_EMAIL=you@example.com CYR_PASSWORD=... node scripts/screenshots.mjs
@@ -6,7 +6,7 @@ import { chromium } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 
-const API = 'http://127.0.0.1:8000/api'
+const API = 'http://127.0.0.1:7413/api'
 const WEB = 'http://localhost:5173'
 const OUT = path.resolve('..', 'docs', 'screenshots')
 mkdirSync(OUT, { recursive: true })

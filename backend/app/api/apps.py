@@ -182,6 +182,9 @@ class SectionName(BaseModel):
     label: str | None = Field(None, max_length=60)
     plural_label: str | None = Field(None, max_length=60)
     color: Literal[SECTION_COLORS] | None = None  # type: ignore[valid-type]
+    fields: dict[str, str] = Field(default_factory=dict)  # field key -> label
+    states: dict[str, str] = Field(default_factory=dict)  # status key -> label
+    transitions: dict[str, str] = Field(default_factory=dict)  # step (button) key -> label
 
 
 class Customize(BaseModel):
@@ -193,16 +196,37 @@ class Customize(BaseModel):
 def customize(slug: str, body: Customize, request: Request, s: Session = Depends(get_session)) -> dict[str, Any]:
     """Rename the app and its sections and pick their colours. The compiled workflow is unchanged."""
     app, _v, _rt = _ctx(slug, request, s, "admin")
-    keys = {e["key"] for e in app.manifest["entities"]}
-    unknown = set(body.sections) - keys
+    entities = {e["key"]: e for e in app.manifest["entities"]}
+    unknown = set(body.sections) - set(entities)
     if unknown:
         raise HTTPException(400, f"Unknown section: {', '.join(sorted(unknown))}.")
+
+    def names(given: dict[str, str], allowed: set[str], what: str) -> dict[str, str]:
+        bad = set(given) - allowed
+        if bad:
+            raise HTTPException(400, f"Unknown {what}: {', '.join(sorted(bad))}.")
+        out = {k: v.strip()[:60] for k, v in given.items() if v and v.strip()}
+        return out
+
     c = s.get(AppCustomization, app.id) or AppCustomization(app_id=app.id, sections={})
     c.name = (body.name or "").strip() or None
-    c.sections = {
-        k: {key: (val.strip() if isinstance(val, str) else val) for key, val in v.model_dump().items() if val not in (None, "")}
-        for k, v in body.sections.items()
-    }
+    sections: dict[str, Any] = {}
+    for k, v in body.sections.items():
+        e = entities[k]
+        st = e.get("state") or {"states": [], "transitions": []}
+        entry: dict[str, Any] = {key: val.strip() for key, val in (("label", v.label), ("plural_label", v.plural_label)) if val and val.strip()}
+        if v.color:
+            entry["color"] = v.color
+        for key, given, allowed, what in (
+            ("fields", v.fields, {f["key"] for f in e["fields"]}, "field"),
+            ("states", v.states, {x["key"] for x in st["states"]}, "status"),
+            ("transitions", v.transitions, {x["key"] for x in st["transitions"]}, "step"),
+        ):
+            got = names(given, allowed, what)
+            if got:
+                entry[key] = got
+        sections[k] = entry
+    c.sections = sections
     s.add(c)
     s.commit()
     return {"manifest": customized_manifest(s, app), "name": customized_manifest(s, app)["workflow"]["name"]}

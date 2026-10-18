@@ -72,7 +72,7 @@ frontend never sees it.
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health      # {"status":"ok",...}
+curl http://localhost:7413/health      # {"status":"ok",...}  (https://… with SSL_CERTFILE/SSL_KEYFILE)
 docker compose logs -f app
 ```
 
@@ -94,15 +94,60 @@ docker compose exec ollama ollama pull gemma4:e4b
 
 ```
 demo.example.com {
-    reverse_proxy 127.0.0.1:8000
+    reverse_proxy 127.0.0.1:7413
     request_body {
         max_size 210MB
     }
 }
 ```
 
-Then `systemctl reload caddy`. Caddy obtains the certificate automatically. Keep port 8000 closed
-to the outside (bind it to localhost with `APP_PORT=127.0.0.1:8000` in `.env`, or use a firewall).
+Then `systemctl reload caddy`. Caddy obtains the certificate automatically. Keep port 7413 closed
+to the outside (bind it to localhost with `APP_PORT=127.0.0.1:7413` in `.env`, or use a firewall).
+
+### HTTPS without a proxy
+
+Camera recording in the browser only works over HTTPS. The backend can serve TLS itself:
+
+```dotenv
+SSL_CERTFILE=/certs/fullchain.pem
+SSL_KEYFILE=/certs/privkey.pem
+```
+
+Mount the folder (`./certs:/certs:ro` in `docker-compose.yml`). If a file is missing or only one of the
+two is set, the server **refuses to start** with a clear message instead of running without HTTPS.
+The Docker health check follows the same setting (`python -m app.serve --check`).
+
+## 4b. Frontend and API on different hosts
+
+Example: the frontend is static files on `https://app.example.com` (any web host, even shared
+hosting), and the API runs on `https://api.example.com:7413`.
+
+**API (`.env`):**
+
+```dotenv
+CORS_ORIGINS=https://app.example.com
+COOKIE_SAMESITE=none          # the cookie must travel to another site: always Secure, HTTPS only
+SSL_CERTFILE=/certs/fullchain.pem
+SSL_KEYFILE=/certs/privkey.pem
+```
+
+**Frontend:**
+- Build it with `npm run build`.
+- Upload `dist/`.
+- Set the API address in `dist/config.json`, which can be edited at any time without rebuilding:
+
+  ```json
+  { "apiBaseUrl": "https://api.example.com:7413" }
+  ```
+
+  Alternatively, set it at build time with `VITE_API_BASE_URL=https://api.example.com:7413 npm run build`.
+- **Under a sub path** (e.g. `https://example.com/cyr/`): build with `VITE_BASE_PATH=/cyr/ npm run build`. Assets and routes then all live under `/cyr/`.
+- Configure the host to serve `index.html` for unknown paths (SPA fallback), so deep links like `/cyr/studio/apps` work.
+
+**What protects the sign-in:**
+- **CORS:** only the listed origins may call the API with cookies.
+- **Origin check:** writes (POST/PUT/PATCH/DELETE) from any other origin get 403, which is the CSRF protection for `SameSite=None`.
+- **Cookie:** the session cookie stays `HttpOnly`.
 
 ## 5. Operate
 

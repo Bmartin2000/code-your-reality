@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import hmac
 import logging
 from contextlib import asynccontextmanager
@@ -42,12 +43,84 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Code Your Reality API", version="1.0.0", lifespan=lifespan)
 settings = get_settings()
+# Cross-origin frontends (frontend and API on different hosts) send the session cookie, so CORS
+# allows credentials for the configured origins only.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=[o for o in settings.cors_origin_list if o != "*"],
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "X-App-Key"],
+    max_age=600,
 )
+
+_UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+class OriginCheckMiddleware:
+    """CSRF protection for cookie sessions: a state-changing API request that carries an Origin header
+    must come from this server's own origin or a configured CORS origin. Needed once cookies are
+    SameSite=None (frontend on another site), because then any site could make the browser send them."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] in _UNSAFE and scope["path"].startswith("/api/"):
+            headers = dict(scope["headers"])
+            origin = headers.get(b"origin", b"").decode("latin-1").rstrip("/")
+            if origin and origin != "null":
+                host = headers.get(b"host", b"").decode("latin-1")
+                same = origin.split("://", 1)[-1] == host
+                if not same and origin not in settings.cors_origin_list:
+                    response = JSONResponse(status_code=403, content={"error": {"message": "This origin isn't allowed to change data here. Add it to CORS_ORIGINS on the server."}})
+                    return await response(scope, receive, send)
+        return await self.app(scope, receive, send)
+
+
+class ETagMiddleware:
+    """Small JSON GET answers get an ETag; a repeated poll with If-None-Match gets a body-less 304.
+    Keeps status polling cheap on small hosting plans."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] != "GET" or not scope["path"].startswith("/api/"):
+            return await self.app(scope, receive, send)
+        start: dict | None = None
+        body = bytearray()
+        passthrough = False
+
+        async def capture(message):
+            nonlocal start, passthrough
+            if passthrough:
+                return await send(message)
+            if message["type"] == "http.response.start":
+                ctype = dict(message.get("headers") or []).get(b"content-type", b"")
+                if message["status"] != 200 or not ctype.startswith(b"application/json"):
+                    passthrough = True
+                    return await send(message)
+                start = message
+                return None
+            body.extend(message.get("body", b""))
+            if message.get("more_body"):
+                return None
+            tag = '"' + hashlib.sha1(bytes(body)).hexdigest()[:20] + '"'
+            client = dict(scope["headers"]).get(b"if-none-match", b"").decode("latin-1")
+            headers = [(k, v) for k, v in start["headers"] if k not in (b"content-length", b"etag", b"cache-control")]
+            headers += [(b"etag", tag.encode()), (b"cache-control", b"private, no-cache")]
+            if client == tag:
+                await send({"type": "http.response.start", "status": 304, "headers": [(k, v) for k, v in headers if k != b"content-type"]})
+                return await send({"type": "http.response.body", "body": b""})
+            await send({**start, "headers": headers + [(b"content-length", str(len(body)).encode())]})
+            return await send({"type": "http.response.body", "body": bytes(body)})
+
+        return await self.app(scope, receive, capture)
+
+
+app.add_middleware(ETagMiddleware)
+app.add_middleware(OriginCheckMiddleware)
 
 
 # Optional HTTP Basic auth for a public demo server. /health stays open for load balancers.

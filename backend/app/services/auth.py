@@ -65,8 +65,14 @@ def start_session(s: Session, user: User, request: Request, response: Response) 
     token = secrets.token_urlsafe(32)
     s.add(AuthSession(token_hash=_token_hash(token), user_id=user.id, expires_at=datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)))
     s.commit()
-    secure = get_settings().cookie_secure or request.url.scheme == "https"
-    response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=secure, path="/")
+    response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, **cookie_attrs(request))
+
+
+def cookie_attrs(request: Request) -> dict:
+    """HttpOnly always. SameSite from COOKIE_SAMESITE; None (frontend on another site) is always Secure."""
+    s = get_settings()
+    secure = s.cookie_secure or request.url.scheme == "https" or s.cookie_samesite == "none"
+    return {"httponly": True, "samesite": s.cookie_samesite, "secure": secure, "path": "/", "domain": s.cookie_domain or None}
 
 
 def end_session(s: Session, request: Request, response: Response) -> None:
@@ -76,7 +82,8 @@ def end_session(s: Session, request: Request, response: Response) -> None:
         if row:
             s.delete(row)
             s.commit()
-    response.delete_cookie(COOKIE, path="/")
+    attrs = cookie_attrs(request)
+    response.delete_cookie(COOKIE, path="/", domain=attrs["domain"], secure=attrs["secure"], httponly=True, samesite=attrs["samesite"])
 
 
 def current_user_optional(request: Request, s: Session = Depends(get_session)) -> User | None:

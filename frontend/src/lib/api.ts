@@ -28,6 +28,7 @@ import type {
   TranscriptSegment,
 } from './types'
 import type { WorkflowDefinition } from './workflow-schema'
+import { apiUrl } from './config'
 
 export interface ApiErrorBody {
   message: string
@@ -116,8 +117,9 @@ function headersFor(path: string, body: unknown): Record<string, string> {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
   try {
-    res = await fetch(path, {
+    res = await fetch(apiUrl(path), {
       method,
+      credentials: 'include', // the session cookie, also when the API is on another host
       headers: headersFor(path, body),
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     })
@@ -147,7 +149,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 function upload(path: string, file: File, onProgress: (fraction: number) => void, signal?: AbortSignal): Promise<ProjectDetail> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', path)
+    xhr.open('POST', apiUrl(path))
+    xhr.withCredentials = true
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total)
     }
@@ -224,16 +227,16 @@ export const api = {
     request<{ record: AppRecord; effects: Effect[] }>('POST', `/api/apps/${slug}/records/${entity}/${id}/transitions/${transition}`),
   addNote: (slug: string, entity: string, id: string, text: string) => request<RecordEvent>('POST', `/api/apps/${slug}/records/${entity}/${id}/notes`, { text }),
   importRecords: (slug: string, entity: string, rows: Record<string, string>[]) => request<ImportResult>('POST', `/api/apps/${slug}/records/${entity}/import`, { rows }),
-  customizeApp: (slug: string, body: { name?: string; sections: Record<string, { label?: string; plural_label?: string; color?: SectionColor }> }) =>
+  customizeApp: (slug: string, body: { name?: string; sections: Record<string, { label?: string; plural_label?: string; color?: SectionColor; fields?: Record<string, string>; states?: Record<string, string>; transitions?: Record<string, string> }> }) =>
     request<{ manifest: Manifest; name: string }>('PUT', `/api/apps/${slug}/customize`, body),
   seedSample: (slug: string) => request<{ created: Record<string, number> }>('POST', `/api/apps/${slug}/seed-sample`),
   exportUrl: (slug: string) => {
     const key = appKey(slug)
-    return `/api/apps/${slug}/export${key ? `?key=${key}` : ''}`
+    return apiUrl(`/api/apps/${slug}/export${key ? `?key=${key}` : ''}`)
   },
   csvUrl: (path: string, slug: string) => {
     const key = appKey(slug)
-    return `${path}${key ? `?key=${key}` : ''}`
+    return apiUrl(`${path}${key ? `?key=${key}` : ''}`)
   },
   reports: (slug: string) => request<AppReports>('GET', `/api/apps/${slug}/reports`),
   integrations: (slug: string) => request<AppIntegrations>('GET', `/api/apps/${slug}/integrations`),
@@ -255,7 +258,7 @@ export const api = {
     request<BillingInfo>('PUT', '/api/account/billing', body),
   issueSubscriptionInvoice: (id: string) => request<InvoiceInfo>('POST', `/api/account/invoices/${id}/issue`),
   toggleSubscriptionInvoicePaid: (id: string) => request<InvoiceInfo>('POST', `/api/account/invoices/${id}/paid`),
-  subscriptionInvoicePdf: (id: string) => `/api/account/invoices/${id}/pdf`,
+  subscriptionInvoicePdf: (id: string) => apiUrl(`/api/account/invoices/${id}/pdf`),
   platformInvoicing: () => request<InvoicingConfig>('GET', '/api/admin/invoicing'),
   setPlatformInvoicing: (body: InvoicingSettingsBody) => request<InvoicingConfig>('PUT', '/api/admin/invoicing', body),
 
@@ -272,7 +275,7 @@ export const api = {
   deleteAppInvoice: (slug: string, id: string) => request<void>('DELETE', `/api/apps/${slug}/invoices/${id}`),
   appInvoicePdf: (slug: string, id: string) => {
     const key = appKey(slug)
-    return `/api/apps/${slug}/invoices/${id}/pdf${key ? `?key=${key}` : ''}`
+    return apiUrl(`/api/apps/${slug}/invoices/${id}/pdf${key ? `?key=${key}` : ''}`)
   },
   appInvoicing: (slug: string) => request<InvoicingConfig>('GET', `/api/apps/${slug}/invoicing`),
   setAppInvoicing: (slug: string, body: InvoicingSettingsBody) => request<InvoicingConfig>('PUT', `/api/apps/${slug}/invoicing`, body),

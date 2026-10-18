@@ -12,6 +12,7 @@ import type { Job, ProjectDetail } from '../../../lib/types'
 import { FIELD_TYPE_LABELS, forEachReviewable, type WorkflowDefinition } from '../../../lib/workflow-schema'
 import { timecode, relativeTime } from '../../../lib/format'
 import { cn } from '../../../lib/cn'
+import { appLink } from '../../../lib/config'
 
 // --- Working (analysis or change request in progress) --------------------------------------------
 
@@ -399,7 +400,7 @@ function Ready({ project }: { project: ProjectDetail }) {
     // The Studio is the owner's console: remember the owner key so a private app opens directly.
     if (project.app_owner_key) setAppKey(slug, project.app_owner_key)
   }, [slug, project.app_owner_key])
-  const url = `${window.location.origin}/apps/${slug}`
+  const url = appLink(`/apps/${slug}`)
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url)
@@ -531,6 +532,7 @@ export default function ProjectFlow() {
   const running = useMemo(() => [project.change_job, project.analysis_job].find((j) => j && (j.status === 'queued' || j.status === 'running')) ?? null, [project])
   const liveJob = useJob(running?.id).data ?? running
   const compiling = project.status === 'compiling'
+  useJob(compiling ? project.compile_job?.id : null) // follows the build and refreshes the project when it's done
   const view = running ? 'working' : compiling ? 'building' : !project.workflow ? 'start' : project.status === 'ready' ? 'ready' : 'review'
 
   return (

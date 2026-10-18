@@ -66,7 +66,7 @@ function ChangeTab({ app, onClose }: { app: AppDetail; onClose: () => void }) {
     setBusy(true)
     try {
       await api.changeRequest(app.project_id, text.trim())
-      toast.success('Working on your change', 'You’ll review it before it reaches the app.')
+      toast.success('Working on your change', 'Review it, then press Build to update the app.')
       onClose()
       navigate(project)
     } catch (e) {
@@ -84,8 +84,11 @@ function ChangeTab({ app, onClose }: { app: AppDetail; onClose: () => void }) {
           <MessageSquareText className="size-5 text-accent" /> Describe a small change
         </label>
         <p className="mt-1 text-[14px] text-fg-muted">One sentence works best, e.g. “Customers should also give a phone number” or “Add a ‘Cleaning’ status for items”.</p>
-        <textarea id="change-text" className="field-input mt-3 min-h-[96px]" maxLength={500} value={text} onChange={(e) => setText(e.target.value)} placeholder="What should change?" />
-        <div className="mt-3 flex justify-end">
+        <textarea id="change-text" className="field-input mt-3 min-h-[96px]" maxLength={300} value={text} onChange={(e) => setText(e.target.value)} placeholder="What should change?" aria-describedby="change-count" />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <span id="change-count" className={cn('text-[13px]', text.length >= 280 ? 'text-warning' : 'text-fg-subtle')}>
+            {text.length}/300 · one small change at a time works best
+          </span>
           <Button variant="primary" loading={busy} disabled={text.trim().length < 8} onClick={submit}>
             Ask AI for this change
           </Button>
@@ -115,8 +118,22 @@ function NamesTab({ app, onClose }: { app: AppDetail; onClose: () => void }) {
   const qc = useQueryClient()
   const [name, setName] = useState(app.manifest.workflow.name)
   const [sections, setSections] = useState(() =>
-    Object.fromEntries(app.manifest.entities.map((e) => [e.key, { label: e.label, plural_label: e.plural_label, color: (e.color ?? 'blue') as SectionColor }])),
+    Object.fromEntries(
+      app.manifest.entities.map((e) => [
+        e.key,
+        {
+          label: e.label,
+          plural_label: e.plural_label,
+          color: (e.color ?? 'blue') as SectionColor,
+          fields: Object.fromEntries(e.fields.map((f) => [f.key, f.label])) as Record<string, string>,
+          states: Object.fromEntries((e.state?.states ?? []).map((s) => [s.key, s.label])) as Record<string, string>,
+          transitions: Object.fromEntries((e.state?.transitions ?? []).map((t) => [t.key, t.label])) as Record<string, string>,
+        },
+      ]),
+    ),
   )
+  const setLabel = (key: string, group: 'fields' | 'states' | 'transitions', k: string, v: string) =>
+    setSections((s) => ({ ...s, [key]: { ...s[key], [group]: { ...s[key][group], [k]: v } } }))
   const [busy, setBusy] = useState(false)
   const set = (key: string, patch: Partial<(typeof sections)[string]>) => setSections((s) => ({ ...s, [key]: { ...s[key], ...patch } }))
 
@@ -153,14 +170,37 @@ function NamesTab({ app, onClose }: { app: AppDetail; onClose: () => void }) {
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1 block text-[13px] font-medium text-fg-muted">One</span>
-                  <input className="field-input" aria-label={`${e.plural_label}: singular name`} value={s.label} maxLength={60} onChange={(ev) => set(e.key, { label: ev.target.value })} />
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-[13px] font-medium text-fg-muted">Many (menu name)</span>
+                  <span className="mb-1 block text-[13px] font-semibold text-fg">Menu name (shown in the menu and headings)</span>
                   <input className="field-input" aria-label={`${e.plural_label}: menu name`} value={s.plural_label} maxLength={60} onChange={(ev) => set(e.key, { plural_label: ev.target.value })} />
                 </label>
+                <label className="block">
+                  <span className="mb-1 block text-[13px] font-medium text-fg-muted">One item (e.g. on the “New …” button)</span>
+                  <input className="field-input" aria-label={`${e.plural_label}: singular name`} value={s.label} maxLength={60} onChange={(ev) => set(e.key, { label: ev.target.value })} />
+                </label>
               </div>
+              <details className="mt-3 rounded-xl bg-ink-900 px-3 py-2">
+                <summary className="cursor-pointer text-[13.5px] font-medium text-accent">Field{e.state ? ', status and step' : ''} names</summary>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {e.fields.map((f) => (
+                    <label key={f.key} className="block">
+                      <span className="mb-0.5 block text-[12px] text-fg-subtle">Field · {f.key}</span>
+                      <input className="field-input !py-2 text-[14px]" aria-label={`${e.plural_label}: field ${f.key}`} value={s.fields[f.key] ?? ''} maxLength={60} onChange={(ev) => setLabel(e.key, 'fields', f.key, ev.target.value)} />
+                    </label>
+                  ))}
+                  {(e.state?.states ?? []).map((st) => (
+                    <label key={`s-${st.key}`} className="block">
+                      <span className="mb-0.5 block text-[12px] text-fg-subtle">Status · {st.key}</span>
+                      <input className="field-input !py-2 text-[14px]" aria-label={`${e.plural_label}: status ${st.key}`} value={s.states[st.key] ?? ''} maxLength={60} onChange={(ev) => setLabel(e.key, 'states', st.key, ev.target.value)} />
+                    </label>
+                  ))}
+                  {(e.state?.transitions ?? []).map((tr) => (
+                    <label key={`t-${tr.key}`} className="block">
+                      <span className="mb-0.5 block text-[12px] text-fg-subtle">Step button · {tr.key}</span>
+                      <input className="field-input !py-2 text-[14px]" aria-label={`${e.plural_label}: step ${tr.key}`} value={s.transitions[tr.key] ?? ''} maxLength={60} onChange={(ev) => setLabel(e.key, 'transitions', tr.key, ev.target.value)} />
+                    </label>
+                  ))}
+                </div>
+              </details>
               <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label={`${e.plural_label}: colour`}>
                 {COLOR_KEYS.map((c) => (
                   <button

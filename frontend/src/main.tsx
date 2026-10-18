@@ -5,6 +5,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { MotionConfig } from 'motion/react'
 import { ApiError } from './lib/api'
 import App from './App'
+import { loadRuntimeConfig, ROUTER_BASENAME } from './lib/config'
 import './index.css'
 
 // A Studio request answered "please sign in" (session expired or user removed): refresh the
@@ -25,11 +26,13 @@ const queryClient: QueryClient = new QueryClient({
   },
 })
 
+await loadRuntimeConfig()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <BrowserRouter>
+        <BrowserRouter basename={ROUTER_BASENAME || undefined}>
           <App />
         </BrowserRouter>
       </MotionConfig>

@@ -51,6 +51,16 @@ def test_notes_import_and_section_names(client):
     summary = next(a for a in client.get("/api/apps").json() if a["slug"] == slug)
     assert summary["name"] == "Camera Rent Pro" and summary["record_count"] >= 10 and summary["last_activity_at"]
     assert client.put(f"/api/apps/{slug}/customize", json={"sections": {"nope": {"label": "x"}}}).status_code == 400
+
+    # Field, status and step names (e.g. into Hungarian), applied everywhere; unknown keys refused.
+    r = client.put(f"/api/apps/{slug}/customize", json={"sections": {"rental": {"plural_label": "Bérlések", "fields": {"expected_return": "Visszahozás"}, "states": {"active": "Kint van"}, "transitions": {"complete_return": "Visszavétel"}}}})
+    assert r.status_code == 200, r.text
+    rental_e = next(e for e in client.get(f"/api/apps/{slug}").json()["manifest"]["entities"] if e["key"] == "rental")
+    assert rental_e["plural_label"] == "Bérlések"
+    assert next(f for f in rental_e["fields"] if f["key"] == "expected_return")["label"] == "Visszahozás"
+    assert next(s for s in rental_e["state"]["states"] if s["key"] == "active")["label"] == "Kint van"
+    assert next(x for x in rental_e["state"]["transitions"] if x["key"] == "complete_return")["label"] == "Visszavétel"
+    assert client.put(f"/api/apps/{slug}/customize", json={"sections": {"rental": {"fields": {"nope": "x"}}}}).status_code == 400
     assert client.put(f"/api/apps/{slug}/customize", json={"sections": {"item": {"color": "neon"}}}).status_code == 422
 
     # Roles: staff can add notes but not import or rename.

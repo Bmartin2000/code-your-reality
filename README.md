@@ -181,7 +181,7 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m app.serve        # http://127.0.0.1:7413 (python -m uvicorn app.main:app --port 7413 works too)
 ```
 
 ```powershell
@@ -210,7 +210,7 @@ One container serves the frontend and the API, with FFmpeg and faster-whisper (C
 ```bash
 cp .env.example .env   # OLLAMA_URL=https://ollama.com, OLLAMA_API_KEY=..., OLLAMA_MODEL=..., COOKIE_SECURE=true
 docker compose up -d --build
-curl http://localhost:8000/health
+curl http://localhost:7413/health
 ```
 
 The API key is read only by the backend from the environment. It's git-ignored, excluded from the Docker build context, and never returned by any endpoint. Full guide, including HTTPS with Caddy (needed for camera recording), local Ollama in Compose, backups and limits: [docs/deploy.md](docs/deploy.md). A GitHub Actions workflow builds the image and smoke-tests `/health`, the frontend, the API and FFmpeg/faster-whisper on every push.

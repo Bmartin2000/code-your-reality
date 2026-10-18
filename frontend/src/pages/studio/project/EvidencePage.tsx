@@ -21,7 +21,7 @@ export default function EvidencePage() {
   const { project } = useProjectContext()
   const qc = useQueryClient()
   const caps = useCapabilities()
-  const audit = useQuery({ queryKey: qk.audit(project.id), queryFn: () => api.audit(project.id), refetchInterval: 5000 })
+  const audit = useQuery({ queryKey: qk.audit(project.id), queryFn: () => api.audit(project.id), refetchInterval: 30000 })
   const seek = usePlayer((s) => s.seek)
   const setHighlight = usePlayer((s) => s.setHighlight)
   const [confirmRerun, setConfirmRerun] = useState(false)

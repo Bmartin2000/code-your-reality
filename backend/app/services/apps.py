@@ -72,6 +72,19 @@ def customized_manifest(s: Session, app: GeneratedApp) -> dict[str, Any]:
         e["label"] = own.get("label") or e["label"]
         e["plural_label"] = own.get("plural_label") or e["plural_label"]
         e["color"] = own.get("color") if own.get("color") in SECTION_COLORS else SECTION_COLORS[i % len(SECTION_COLORS)]
+        field_names = own.get("fields") or {}
+        for f in e["fields"]:
+            if field_names.get(f["key"]):
+                f["label"] = field_names[f["key"]]
+        if e.get("state"):
+            state_names = own.get("states") or {}
+            for st in e["state"]["states"]:
+                if state_names.get(st["key"]):
+                    st["label"] = state_names[st["key"]]
+            step_names = own.get("transitions") or {}
+            for tr in e["state"]["transitions"]:
+                if step_names.get(tr["key"]):
+                    tr["label"] = step_names[tr["key"]]
     by_key = {e["key"]: e for e in m["entities"]}
     for v in m.get("views", []):
         if v.get("entity") in by_key:

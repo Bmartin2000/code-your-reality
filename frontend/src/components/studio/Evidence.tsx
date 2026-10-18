@@ -7,6 +7,7 @@ import { timecode } from '../../lib/format'
 import { Button, IconButton } from '../ui/Button'
 import { TechnicalLabel } from '../ui/primitives'
 import { cn } from '../../lib/cn'
+import { apiUrl } from '../../lib/config'
 
 // --- Real video -------------------------------------------------------------------------------
 
@@ -25,7 +26,7 @@ export function VideoPlayer({ media }: { media: MediaAsset }) {
     <div className="overflow-hidden rounded-xl border border-line-soft bg-black">
       <video
         ref={ref}
-        src={media.url}
+        src={apiUrl(media.url)}
         controls
         playsInline
         preload="metadata"
@@ -54,7 +55,7 @@ export function FrameStrip({ media }: { media: MediaAsset }) {
             className={cn('group relative overflow-hidden rounded-md border transition-colors', cited.has(f.index) ? 'border-accent' : 'border-line-soft hover:border-line')}
             aria-label={`Frame ${f.index} at ${timecode(f.time)}`}
           >
-            <img src={f.url} alt="" className="aspect-video w-full object-cover opacity-80 group-hover:opacity-100" loading="lazy" />
+            <img src={apiUrl(f.url)} alt="" className="aspect-video w-full object-cover opacity-80 group-hover:opacity-100" loading="lazy" />
             <span className="absolute bottom-0.5 left-1 font-mono text-[9px] text-fg drop-shadow">
               F{f.index} · {timecode(f.time)}
             </span>
