@@ -28,48 +28,65 @@ Don't change the way your business works…
 Build the software around it.
 
 8
-00:01:26,900 --> 00:01:35,760
+00:01:27,400 --> 00:01:35,380
+Nothing here is a template. Every list, every step and every rule
+comes from the way your company actually works.
+
+9
+00:01:38,900 --> 00:01:47,760
 Then it lays out what it understood: what you keep track of,
 how work moves along, and the rules you follow. Each with the moment you said it.
 
-9
-00:01:35,900 --> 00:01:41,480
+10
+00:01:47,900 --> 00:01:53,480
 You keep what's right, and leave out what isn't.
 Nothing goes live without your OK.
 
-10
-00:01:42,000 --> 00:01:47,500
+11
+00:01:54,000 --> 00:01:59,500
 One click, and your app is ready.
 Open it, share the link, or download everything.
 
-11
-00:01:55,000 --> 00:02:02,020
+12
+00:02:07,000 --> 00:02:14,020
 And your rules actually hold. Try to lend the same drill twice,
 and the system says no, and tells you why.
 
-12
-00:02:05,900 --> 00:02:14,120
+13
+00:02:17,900 --> 00:02:26,120
 When something changes, just say it in one sentence, or record again.
 You approve every change.
 
-13
-00:02:14,600 --> 00:02:17,060
+14
+00:02:26,600 --> 00:02:29,060
 Call everything what your team calls it.
 
-14
-00:02:18,400 --> 00:02:27,820
+15
+00:02:30,400 --> 00:02:39,820
 With Plus, it becomes your team's system: reports, calendar and webhook connections,
 roles for every colleague, and invoices straight from a record.
 
-15
-00:02:31,500 --> 00:02:36,760
+16
+00:02:43,500 --> 00:02:48,760
 Build more apps as you grow.
 And real people at Integrint help you along the way.
 
-16
-00:02:43,900 --> 00:02:47,800
+17
+00:02:56,600 --> 00:02:59,540
+Paper slips become one shared system.
+
+18
+00:03:01,600 --> 00:03:04,220
+The scheduling wall becomes a live board.
+
+19
+00:03:06,500 --> 00:03:10,000
+And the spreadsheets? Reports that update themselves.
+
+20
+00:03:11,400 --> 00:03:15,300
 Same company. Same people. Finally connected.
 
-17
-00:02:54,800 --> 00:02:58,780
+21
+00:03:22,300 --> 00:03:26,280
 Code Your Reality. Your processes. Your software.
