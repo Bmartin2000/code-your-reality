@@ -1,4 +1,4 @@
-# English voiceover (re-cut 2, ≈ 3:00). Narrator: "Fraser", ElevenLabs via Higgsfield.
+# English voiceover (re-cut 3, ≈ 3:28). Narrator: "Fraser", ElevenLabs via Higgsfield.
 
 File = audio/vo/vo_XX.wav; times come from edit/timeline.py (VO list).
 
@@ -19,7 +19,11 @@ File = audio/vo/vo_XX.wav; times come from edit/timeline.py (VO list).
 | 27 | B09 rename | Call everything what your team calls it. |
 | 28 | B10–B13 Plus | With Plus, it becomes your team's system: reports, calendar and webhook connections, roles for every colleague, and invoices straight from a record. |
 | 29 | B14–B15 apps + support | Build more apps as you grow. And real people at Integrint help you along the way. |
-| 13 | G15 the calm office | Same company. Same people. Finally connected. |
+| 30 | M01 "You said → It built" | Nothing here is a template. Every list, every step and every rule comes from the way your company actually works. |
+| 31 | BA1 paper slips → shared system | Paper slips become one shared system. |
+| 32 | BA2 scheduling wall → live board | The scheduling wall becomes a live board. |
+| 33 | BA3 spreadsheets → reports | And the spreadsheets? Reports that update themselves. |
+| 13 | G16 Knot becomes the logo | Same company. Same people. Finally connected. |
 | 14 | T10 end card | Code Your Reality. Your processes. Your software. |
 
 Retired after the re-cut: 08–11 (replaced by 21–29).

@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "edit"))
 from timeline import SEGMENTS, START, TOTAL, VO  # noqa: E402
+import compose  # noqa: E402
 
 FFMPEG = str(Path(r"C:\Users\webar\reality-compiler\backend\.venv\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"))
 BUILD = ROOT / "edit" / "build"
@@ -331,6 +332,10 @@ def write_srt(path: Path) -> None:
         27: "Call everything what your team calls it.",
         28: "With Plus, it becomes your team's system: reports, calendar and webhook connections,\nroles for every colleague, and invoices straight from a record.",
         29: "Build more apps as you grow.\nAnd real people at Integrint help you along the way.",
+        30: "Nothing here is a template. Every list, every step and every rule\ncomes from the way your company actually works.",
+        31: "Paper slips become one shared system.",
+        32: "The scheduling wall becomes a live board.",
+        33: "And the spreadsheets? Reports that update themselves.",
     }
 
     def ts(t: float) -> str:
@@ -382,14 +387,7 @@ def main() -> None:
         if only and s["id"] not in only:
             continue
         print(f"render {s['id']} ({s['kind']}, {s['dur']}s) at {START[s['id']]:.1f}s", flush=True)
-        if s["kind"] == "gen":
-            render_gen(s, out)
-        elif s["kind"] in ("ui", "ui3"):
-            render_ui(s, out, art)
-        elif s["kind"] == "logo":
-            render_still(art["logo"], s, out, zoom=0.07)
-        elif s["kind"] == "end":
-            render_still(art["end"], s, out, zoom=0.03)
+        compose.render_to(s, out)  # sub-pixel compositor (re-cut 3): no zoompan jitter
     if only and not a.assemble:
         return
 

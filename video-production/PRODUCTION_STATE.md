@@ -2,6 +2,15 @@
 
 **Phase:** 5, main film delivered: exports/CodeYourReality_LaunchFilm_1080p.mp4 (2:24, 1920×1080, 24 fps, AAC 48 kHz, −16 LUFS) + .en.srt + a subtitled MP4.
 
+## Re-cut 3 (user feedback, 2026-10-18)
+- **Request:** a more spectacular monster → logo finale; show more clearly that the system is built for your own company and how much it changes; no shaky footage, the app window must not slip out of frame.
+- **Done:**
+  - **New compositor (edit/compose.py):** sub-pixel affine moves with 2× supersampling replace ffmpeg zoompan (whole-pixel steps caused the jitter). Every app shot sits in one fixed, framed window (1440×810 at 240,200); only the content moves inside it.
+  - **M01 "Made for your company":** real quotes from the analysed video next to what the app built from them.
+  - **BA1–BA3:** before/after wipes from the chaos shots to the real app (paper slips, scheduling wall, spreadsheets).
+  - **Finale:** G16 morph with a light burst, new G17 (logo rises, light vortex), then a seamless settle into the end card (T10).
+  - **Narration:** new lines 30–33. **Length:** ≈ 3:28.
+
 ## Re-cut 2 (user feedback, 2026-10-18)
 - **Request:** at ~1:00 the recording UI should fade in over the owner's shot, the video gets sent, and the real app takes over, so the film itself turns out to be the recording. The product part should explain more.
 - **Done:**
@@ -11,7 +20,7 @@
   - **Length:** ≈ 3:00.
 
 ## Decisions (user, 2026-10-18)
-- **Budget:** 300 credits; automatic ceiling 210; 90 in reserve. Spent 185.10, verified (see BUDGET_TRACKER.md).
+- **Budget:** 300 credits; automatic ceiling 210; 90 in reserve. Spent 197.90, verified (see BUDGET_TRACKER.md).
 - **Logo:** the supplied camera-aperture logo (brand/), no "ERM SYSTEM".
 - **Narrator:** "Fraser" preset voice (user's choice), ElevenLabs via Higgsfield.
 

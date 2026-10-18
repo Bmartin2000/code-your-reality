@@ -6,7 +6,7 @@
 | **Authorized project budget** | **300** (approved by the user, 2026-10-18) |
 | Automatic spending ceiling (70%) | **210** |
 | Protected reserve (30%, needs approval) | **90** |
-| Spent to date | **188.10, verified** (balance 793.28 → 605.18; re-cut 2 added 3.00, narration lines only) |
+| Spent to date | **197.90, verified** (balance 793.28 → 595.38; re-cut 3 added 9.80: G17 + narration 30–33). Automatic ceiling 210; the 90 reserve is untouched |
 | Estimated cost to complete | 0. Remaining under the ceiling: 21.90; reserve 90 untouched |
 
 **Split of the spendable part:**
@@ -35,3 +35,5 @@
 | 2026-10-18 17:50 | SF17b (matched end frame for the morph) | gpt_image_2_5 medium 2k | 1 | 1.00 | ≈173.35 | |
 | 2026-10-18 17:51 | G16 morph retry (matched start/end frames) | kling3_0 pro silent | 2 | 8.75 | ≈182.10 | the 1st take popped the logo in with a cut |
 | 2026-10-18 18:12 | VO lines 21–29, Fraser voice (re-cut: feature explanations) | text2speech_v2 elevenlabs | 1 | ≈1.35 | ≈186.45 | |
+| 2026-10-18 18:30 | G17 hero logo rise (start = G16 last frame, end = R11 logo) | kling3_0 pro silent | 1 | 8.75 | ≈196.85 | re-cut 3: more spectacular finale |
+| 2026-10-18 18:31 | VO lines 30–33, Fraser voice | text2speech_v2 elevenlabs | 1 | ≈0.60 | ≈197.45 | |

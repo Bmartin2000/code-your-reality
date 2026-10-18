@@ -53,6 +53,12 @@ SEGMENTS = [
     # From video to system
     {"id": "G13", "kind": "gen", "src": f"{GEN}/G13.mp4", "dur": 5.0},
     {"id": "T06", "kind": "logo", "dur": 4.0, "fade_in": 0.5},
+    # Made for your company: real quotes from the analysed workshop video → what the app built from them
+    {"id": "M01", "kind": "said", "dur": 12.0, "super": "Made for your company.", "sub": "From what you said to what it built.", "pairs": [
+        {"time": "00:00", "quote": "This is how we lend tools at our community workshop.", "built": [("title", "Community Workshop Tool Lending"), ("chips", ["Tools", "Members", "Loans"])]},
+        {"time": "00:25", "quote": "Every loan has a deposit of at least 0 euros, usually 20.", "built": [("title", "Loan form · Deposit amount"), ("rule", "Every loan has a deposit of at least 0 euros.")]},
+        {"time": "00:30", "quote": "Then I turn the tool card to lent, so nobody else takes it.", "built": [("title", "Automatic step: lending marks the tool as lent"), ("rule", "A tool can only be lent to one member at a time.")]},
+    ]},
     # The product, one idea per beat (real recordings)
     {"id": "B01", "kind": "ui", "src": f"{APP}/11_review_evidence.webm", "in": 8.0, "dur": 9.0, "super": "Built from your own words.", "sub": "Every finding shows the moment you said it.", "focus": [(0, 960, 540, 1.3), (4.6, 960, 540, 1.3), (5.8, 950, 610, 2.0), (9, 950, 610, 2.0)]},
     {"id": "B02", "kind": "ui", "src": f"{APP}/03_review.webm", "in": 21.0, "dur": 6.0, "super": "You decide.", "sub": "Keep what's right, leave out what isn't. Then build.", "focus": [(0, 960, 700, 1.3), (3, 960, 900, 1.5), (6, 960, 900, 1.5)]},
@@ -69,13 +75,20 @@ SEGMENTS = [
     {"id": "B13", "kind": "ui", "src": f"{APP}/08_plus_features.webm", "in": 44.0, "dur": 3.5, "super": "Plus · Invoicing", "sub": "Invoices straight from a record, via Számlázz.hu.", "focus": [(0, 960, 540, 1.15), (1.5, 960, 520, 1.5), (3.5, 960, 520, 1.5)]},
     {"id": "B14", "kind": "ui", "src": f"{APP}/09_my_apps_billing.webm", "in": 3.0, "dur": 4.0, "super": "Grow app by app.", "sub": "All your apps in one place.", "focus": [(0, 960, 540, 1.2), (2, 960, 560, 1.45), (4, 960, 560, 1.45)]},
     {"id": "B15", "kind": "ui", "src": f"{APP}/09_my_apps_billing.webm", "in": 24.0, "dur": 3.5, "super": "Real people, real support.", "sub": "Help from Integrint whenever you need it.", "focus": [(0, 960, 540, 1.2), (2, 960, 560, 1.45), (3.5, 960, 560, 1.45)], "fade_out": 0.3},
-    # Scene 8 – the company transforms
+    # Scene 8 – the company transforms: the same places, before → after
     {"id": "G14", "kind": "gen", "src": f"{GEN}/G14.mp4", "dur": 5.0, "fade_in": 0.3},
-    {"id": "G15", "kind": "gen", "src": f"{GEN}/G15.mp4", "dur": 5.0},
-    # Scene 9 – Knot transforms
-    {"id": "G16", "kind": "gen", "src": f"{GEN}/G16.mp4", "dur": 5.0, "fade_out": 0.5},
-    # Scene 10 – brand
-    {"id": "T10", "kind": "end", "dur": 7.0, "fade_in": 0.6, "fade_out": 0.8},
+    {"id": "BA1", "kind": "wipe", "dur": 5.0, "caption": "Paper slips  →  one shared system",
+     "a": {"id": "BA1a", "kind": "gen", "src": f"{GEN}/G03.mp4", "dur": 5.0}, "b": {"id": "BA1b", "kind": "gen", "src": f"{GEN}/G15.mp4", "dur": 5.0}},
+    {"id": "BA2", "kind": "wipe", "dur": 5.0, "caption": "Scheduling wall  →  a live board",
+     "a": {"id": "BA2a", "kind": "gen", "src": f"{GEN}/G04.mp4", "dur": 5.0}, "b": {"id": "BA2b", "kind": "ui", "src": f"{APP}/05_board_rule.webm", "in": 3.0, "dur": 5.0}},
+    {"id": "BA3", "kind": "wipe", "dur": 5.5, "caption": "Spreadsheets  →  reports that update themselves",
+     "a": {"id": "BA3a", "kind": "gen", "src": f"{GEN}/G05.mp4", "dur": 5.0}, "b": {"id": "BA3b", "kind": "ui", "src": f"{APP}/08_plus_features.webm", "in": 12.5, "dur": 5.5, "focus": [(0, 960, 540, 1.2), (2.5, 1000, 360, 1.6), (5.5, 1000, 360, 1.6)]}},
+    # Scene 9 – Knot transforms (with a light burst at the moment of the morph)…
+    {"id": "G16", "kind": "gen", "src": f"{GEN}/G16.mp4", "dur": 5.0, "burst": {"x": 880, "y": 110, "at": 3.1, "dur": 1.3}},
+    # …and the logo rises, the office dims, and it becomes the hero logo
+    {"id": "G17", "kind": "gen", "src": f"{GEN}/G17.mp4", "dur": 5.0},
+    # Scene 10 – brand: starts as G17's last frame (the full-frame logo) and settles into the end card
+    {"id": "T10", "kind": "end", "dur": 7.0, "fade_out": 0.8},
 ]
 
 for _s in SEGMENTS:
@@ -102,8 +115,8 @@ CUES = {
     "product": START["T06"],
     "transform": START["G14"],
     "endcard": START["T10"],
-    "morph": START["G16"] + 2.5,
-    "whooshes": [START["R1"], START["G13"], START["T06"], START["B01"], START["B10"], START["G14"], START["T10"]],
+    "morph": START["G16"] + 3.0,
+    "whooshes": [START["R1"], START["G13"], START["T06"], START["M01"], START["B01"], START["B10"], START["G14"], START["BA1"] + 1.0, START["BA2"] + 1.0, START["BA3"] + 1.0, START["G17"] + 0.5],
     "creature": [1.2, START["G07"] + 0.6],
 }
 
@@ -116,6 +129,7 @@ VO = [
     (5, START["G12"] + 0.2),
     (21, START["R3"] + 0.4),
     (6, START["G13"] + 0.6),
+    (30, START["M01"] + 0.8),
     (22, START["B01"] + 0.3),
     (23, START["B02"] + 0.3),
     (24, START["B03"] + 0.4),
@@ -124,6 +138,9 @@ VO = [
     (27, START["B09"] + 0.5),
     (28, START["B10"] + 0.3),
     (29, START["B14"] + 0.4),
-    (13, START["G15"] + 0.3),
+    (31, START["BA1"] + 1.0),
+    (32, START["BA2"] + 1.0),
+    (33, START["BA3"] + 0.9),
+    (13, START["G16"] + 0.3),
     (14, START["T10"] + 1.2),
 ]
