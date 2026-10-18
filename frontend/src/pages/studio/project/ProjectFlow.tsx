@@ -12,7 +12,7 @@ import type { Job, ProjectDetail } from '../../../lib/types'
 import { FIELD_TYPE_LABELS, forEachReviewable, type WorkflowDefinition } from '../../../lib/workflow-schema'
 import { timecode, relativeTime } from '../../../lib/format'
 import { cn } from '../../../lib/cn'
-import { appLink } from '../../../lib/config'
+import { appPageUrl } from '../../../lib/base'
 
 // --- Working (analysis or change request in progress) --------------------------------------------
 
@@ -400,7 +400,7 @@ function Ready({ project }: { project: ProjectDetail }) {
     // The Studio is the owner's console: remember the owner key so a private app opens directly.
     if (project.app_owner_key) setAppKey(slug, project.app_owner_key)
   }, [slug, project.app_owner_key])
-  const url = appLink(`/apps/${slug}`)
+  const url = appPageUrl(`/apps/${slug}`)
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url)

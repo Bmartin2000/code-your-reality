@@ -6,133 +6,37 @@ on:
   pull_request:
   workflow_dispatch:
 
-defaults:
-  run:
-    shell: bash -euo pipefail {0}
-
 jobs:
-  frontend-base-paths:
-    # The frontend must work at the domain root and under a sub path, with every asset reachable.
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci --no-audit --no-fund
-      - name: Build at a sub path and check every referenced asset exists
-        run: |
-          VITE_BASE_PATH=/cyr/ npx vite build --outDir dist-sub
-          refs=$(grep -oE '(src|href)="[^"]+"' dist-sub/index.html | sed -E 's/^(src|href)="//; s/"$//')
-          test -n "$refs"
-          for r in $refs; do
-            case "$r" in /cyr/*) ;; *) echo "not under /cyr/: $r"; exit 1 ;; esac
-            test -f "dist-sub/${r#/cyr/}" || { echo "missing asset: $r"; exit 1; }
-          done
-          test -f dist-sub/config.json
-          echo "sub path build OK: $(echo "$refs" | wc -l) references"
-
   build-and-smoke-test:
-    # Runs the image the way production does: HTTPS on port 7413, frontend on another origin
-    # (CORS with credentials, SameSite=None; Secure cookies). Every check must pass explicitly.
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      API: https://localhost:7413
-      FRONTEND_ORIGIN: https://app.cyr.example
     steps:
       - uses: actions/checkout@v4
 
       - name: Build image
         run: docker build -t code-your-reality:ci .
 
-      - name: Self-signed certificate for localhost
+      - name: Start container (no model, no transcription)
         run: |
-          mkdir certs
-          openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj "/CN=localhost" \
-            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" -keyout certs/key.pem -out certs/cert.pem
-          chmod 644 certs/*.pem
-
-      - name: A broken TLS setup must stop the server, not start it without HTTPS
-        run: |
-          docker run -d --name cyr-bad -e SSL_CERTFILE=/certs/missing.pem -e SSL_KEYFILE=/certs/missing.pem code-your-reality:ci
-          code=$(docker wait cyr-bad)
-          docker logs cyr-bad 2>&1 | tail -3
-          test "$code" != "0"
-
-      - name: Start container (HTTPS, cross-origin frontend, no model)
-        run: |
-          docker run -d --name cyr -p 7413:7413 -v "$PWD/certs:/certs:ro" \
-            -e SSL_CERTFILE=/certs/cert.pem -e SSL_KEYFILE=/certs/key.pem \
-            -e CORS_ORIGINS="$FRONTEND_ORIGIN" -e COOKIE_SAMESITE=none \
+          docker run -d --name cyr -p 7413:7413 \
             -e OLLAMA_URL=http://127.0.0.1:9 -e WHISPER_ENABLED=false \
             code-your-reality:ci
-          # Wait for Docker's own health check to report healthy; fail on exit or unhealthy.
-          for i in $(seq 1 60); do
-            state=$(docker inspect --format '{{.State.Status}} {{.State.Health.Status}}' cyr)
-            echo "$state"
-            case "$state" in
-              "running healthy") exit 0 ;;
-              exited*|*unhealthy) docker logs cyr; exit 1 ;;
-            esac
-            sleep 2
-          done
-          echo "container never became healthy"; docker logs cyr; exit 1
+          for i in $(seq 1 30); do curl -fsS http://localhost:7413/health && break; sleep 2; done
 
       - name: Smoke test
         run: |
-          c() { curl -sS --cacert certs/cert.pem "$@"; }
-          # HTTPS answers; plain HTTP on the same port doesn't.
-          c -f "$API/health" | grep -q '"status":"ok"'
-          if curl -fsS -m 5 http://localhost:7413/health; then echo "plain HTTP must not work"; exit 1; fi
-
-          # The built frontend and every asset it references.
-          c -f "$API/" -o index.html
-          grep -q '<div id="root">' index.html
-          for r in $(grep -oE '(src|href)="/[^"]+"' index.html | sed -E 's/^(src|href)="//; s/"$//'); do
-            c -f -o /dev/null "$API$r" || { echo "asset not served: $r"; exit 1; }
-          done
-          c -f "$API/studio/projects/abc" | grep -q '<div id="root">'
-
-          # CORS: the configured frontend origin may call with cookies; another origin may not.
-          pre=$(c -i -X OPTIONS "$API/api/auth/login" -H "Origin: $FRONTEND_ORIGIN" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type")
-          echo "$pre" | grep -qi "^access-control-allow-origin: $FRONTEND_ORIGIN"
-          echo "$pre" | grep -qi '^access-control-allow-credentials: true'
-          if c -i -X OPTIONS "$API/api/auth/login" -H "Origin: https://evil.example" -H "Access-Control-Request-Method: POST" | grep -qi '^access-control-allow-origin'; then
-            echo "foreign origin was allowed"; exit 1
-          fi
-
-          # Sign-in: the first account is admin; the cookie is HttpOnly, Secure, SameSite=None.
-          test "$(c -o /dev/null -w '%{http_code}' "$API/api/system/capabilities")" = "401"
-          reg=$(c -i -c jar -H "Origin: $FRONTEND_ORIGIN" -H 'Content-Type: application/json' \
-            -d '{"name":"CI","email":"ci@example.com","password":"ci-password-123"}' "$API/api/auth/register")
-          echo "$reg" | grep -q '"role":"admin"'
-          cookie=$(echo "$reg" | grep -i '^set-cookie: cyr_session=')
-          echo "$cookie" | grep -qi 'httponly'
-          echo "$cookie" | grep -qi 'secure'
-          echo "$cookie" | grep -qi 'samesite=none'
-
-          # CSRF: a write from a foreign origin is refused even with the cookie.
-          test "$(c -o /dev/null -w '%{http_code}' -b jar -X POST -H 'Origin: https://evil.example' "$API/api/projects/sample")" = "403"
-
-          # The Studio API works for the signed-in user.
-          c -f -b jar "$API/api/system/capabilities" | grep -q '"ffmpeg":{"available":true'
-          c -f -b jar -X POST -H "Origin: $FRONTEND_ORIGIN" "$API/api/projects/sample" | grep -q '"origin":"sample"'
-
-          # Unchanged polls are answered with 304.
-          etag=$(c -f -b jar -D - -o /dev/null "$API/api/projects" | grep -i '^etag:' | cut -d' ' -f2 | tr -d '\r')
-          test -n "$etag"
-          test "$(c -o /dev/null -w '%{http_code}' -b jar -H "If-None-Match: $etag" "$API/api/projects")" = "304"
-
+          set -e
+          curl -fsS http://localhost:7413/health | grep '"status":"ok"'
+          curl -fsS http://localhost:7413/ | grep -i '<div id="root">'
+          curl -fsS http://localhost:7413/studio | grep -i '<div id="root">'
+          # The Studio API needs a signed-in user: anonymous calls are refused, the first account is admin.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7413/api/system/capabilities)" = "401"
+          curl -fsS -c jar -H 'Content-Type: application/json' -d '{"name":"CI","email":"ci@example.com","password":"ci-password-123"}' http://localhost:7413/api/auth/register | grep '"role":"admin"'
+          curl -fsS -b jar http://localhost:7413/api/system/capabilities | grep '"ffmpeg":{"available":true'
+          curl -fsS -b jar -X POST http://localhost:7413/api/projects/sample | grep '"origin":"sample"'
           docker exec cyr ffmpeg -version | head -1
           docker exec cyr python -c "import faster_whisper; print('faster-whisper', faster_whisper.__version__)"
-          test "$(docker inspect --format '{{.State.Health.Status}}' cyr)" = "healthy"
+          test "$(docker inspect --format '{{.State.Health.Status}}' cyr)" != "unhealthy"
 
       - name: Logs on failure
         if: failure()

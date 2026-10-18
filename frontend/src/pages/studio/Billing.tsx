@@ -159,7 +159,7 @@ export default function Billing() {
             invoices={data.invoices}
             connected={data.invoicing.connected}
             showBuyer={false}
-            pdfUrl={(i) => api.subscriptionInvoicePdf(i.id)}
+            onPdf={(i) => void api.downloadSubscriptionInvoicePdf(i.id, `${i.number ?? i.draft_number}.pdf`)}
             onView={setViewing}
             onIssue={(i) => act(`issue-${i.id}`, () => api.issueSubscriptionInvoice(i.id))}
             onTogglePaid={(i) => act(`paid-${i.id}`, () => api.toggleSubscriptionInvoicePaid(i.id))}

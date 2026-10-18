@@ -4,8 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MotionConfig } from 'motion/react'
 import { ApiError } from './lib/api'
+import { ROUTER_BASENAME } from './lib/base'
 import App from './App'
-import { loadRuntimeConfig, ROUTER_BASENAME } from './lib/config'
 import './index.css'
 
 // A Studio request answered "please sign in" (session expired or user removed): refresh the
@@ -26,13 +26,11 @@ const queryClient: QueryClient = new QueryClient({
   },
 })
 
-await loadRuntimeConfig()
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <BrowserRouter basename={ROUTER_BASENAME || undefined}>
+        <BrowserRouter basename={ROUTER_BASENAME}>
           <App />
         </BrowserRouter>
       </MotionConfig>

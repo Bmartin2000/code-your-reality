@@ -7,7 +7,7 @@ import { timecode } from '../../lib/format'
 import { Button, IconButton } from '../ui/Button'
 import { TechnicalLabel } from '../ui/primitives'
 import { cn } from '../../lib/cn'
-import { apiUrl } from '../../lib/config'
+import { apiUrl } from '../../lib/base'
 
 // --- Real video -------------------------------------------------------------------------------
 

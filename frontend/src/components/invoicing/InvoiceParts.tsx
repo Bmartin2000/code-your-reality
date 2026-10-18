@@ -41,6 +41,7 @@ export function InvoiceList({
   invoices,
   connected,
   pdfUrl,
+  onPdf,
   onView,
   onIssue,
   onTogglePaid,
@@ -50,7 +51,10 @@ export function InvoiceList({
 }: {
   invoices: InvoiceInfo[]
   connected: boolean
-  pdfUrl: (inv: InvoiceInfo) => string
+  /** Plain link (app-key downloads) … */
+  pdfUrl?: (inv: InvoiceInfo) => string
+  /** … or a download that needs the Studio session (fetched with the bearer header). */
+  onPdf?: (inv: InvoiceInfo) => void
   onView: (inv: InvoiceInfo) => void
   onIssue: (inv: InvoiceInfo) => void
   onTogglePaid?: (inv: InvoiceInfo) => void
@@ -85,7 +89,7 @@ export function InvoiceList({
               </Button>
             )}
             {inv.has_pdf && (
-              <a href={pdfUrl(inv)} className="inline-flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium text-fg-muted ring-1 ring-line-soft hover:text-fg">
+              <a href={pdfUrl ? pdfUrl(inv) : '#'} onClick={onPdf ? (e) => { e.preventDefault(); onPdf(inv) } : undefined} className="inline-flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium text-fg-muted ring-1 ring-line-soft hover:text-fg">
                 <Download className="size-3.5" /> PDF
               </a>
             )}

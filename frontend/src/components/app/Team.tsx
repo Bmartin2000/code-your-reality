@@ -7,7 +7,7 @@ import { Button } from '../ui/Button'
 import { PlusGate } from '../studio/PlusGate'
 import { toast } from '../../lib/toast'
 import type { AppMember } from '../../lib/types'
-import { appLink } from '../../lib/config'
+import { appPageUrl } from '../../lib/base'
 
 const ROLE_INFO: Record<AppMember['role'], { label: string; can: string }> = {
   owner: { label: 'Owner', can: 'Everything, including team and connections' },
@@ -17,7 +17,7 @@ const ROLE_INFO: Record<AppMember['role'], { label: string; can: string }> = {
 }
 
 function personalLink(slug: string, key: string) {
-  return appLink(`/apps/${slug}?key=${key}`)
+  return appPageUrl(`/apps/${slug}?key=${encodeURIComponent(key)}`)
 }
 
 export function Team({ slug }: { slug: string }) {

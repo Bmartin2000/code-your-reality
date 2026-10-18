@@ -74,8 +74,8 @@ def register(body: Register, request: Request, response: Response, s: Session = 
     user = _create_user(s, body, "admin" if first else "user")
     if first:
         auth.super_admin(s)  # pin the founding account by its id
-    auth.start_session(s, user, request, response)
-    return {"user": auth.public_user(user)}
+    token = auth.start_session(s, user, request, response)
+    return {"user": auth.public_user(user), "token": token}
 
 
 @router.post("/auth/login")
@@ -86,8 +86,8 @@ def login(body: Login, request: Request, response: Response, s: Session = Depend
     if not user or not auth.verify_password(body.password, user.password_hash):
         auth.record_failure(ip)
         raise HTTPException(401, {"message": "Wrong email or password."})
-    auth.start_session(s, user, request, response)
-    return {"user": auth.public_user(user)}
+    token = auth.start_session(s, user, request, response)
+    return {"user": auth.public_user(user), "token": token}
 
 
 @router.post("/auth/logout")

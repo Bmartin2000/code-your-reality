@@ -1,8 +1,13 @@
 # syntax=docker/dockerfile:1
 #
 # Code Your Reality — one container: FastAPI backend + faster-whisper (CPU, int8) + FFmpeg,
-# serving the built React frontend from the same origin.
+# serving the built React frontend from the same origin. Run it API-only with FRONTEND_DIST= (empty).
 # The AI model is reached over HTTP: local Ollama or Ollama Cloud (OLLAMA_URL / OLLAMA_API_KEY).
+#
+# The API listens on 7413 (not 8000, which other services on NAS/VPS hosts often take).
+#
+# Frontend only, as static files for any web server or subfolder, pointed at an API elsewhere:
+#   docker build --target web-dist --build-arg VITE_API_BASE_URL=https://api.example.com:7413/ -o dist-web .
 
 # --- 1. Build the frontend -------------------------------------------------------------------------
 FROM node:22-bookworm-slim AS web
@@ -10,10 +15,13 @@ WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
-# Mount path of the frontend ("/" or e.g. "/cyr/"); the API URL can also be set later in config.json.
-ARG VITE_BASE_PATH=/
-ARG VITE_API_BASE_URL=
-RUN VITE_BASE_PATH="$VITE_BASE_PATH" VITE_API_BASE_URL="$VITE_API_BASE_URL" npm run build
+# Where the built frontend calls the API. Empty = './' (served by this backend, same origin).
+ARG VITE_API_BASE_URL=""
+RUN VITE_API_BASE_URL="$VITE_API_BASE_URL" npm run build
+
+# --- 1b. Frontend files only (docker build --target web-dist -o <dir>) -------------------------------
+FROM scratch AS web-dist
+COPY --from=web /web/dist/ /
 
 # --- 2. Backend runtime ----------------------------------------------------------------------------
 FROM python:3.12-slim-bookworm AS app
@@ -26,14 +34,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FRONTEND_DIST=/app/static \
     HF_HOME=/app/hf-cache \
     WHISPER_DEVICE=cpu \
-    WHISPER_COMPUTE_TYPE=int8 \
-    HOST=0.0.0.0 \
-    PORT=7413 \
-    FORWARDED_ALLOW_IPS=*
+    WHISPER_COMPUTE_TYPE=int8
 
-# FFmpeg for audio extraction and frame sampling.
+# FFmpeg for audio extraction and frame sampling; curl for the health check.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+    && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -41,6 +46,7 @@ COPY backend/requirements.txt ./
 RUN pip install -r requirements.txt
 
 COPY backend/app ./app
+COPY --chmod=755 backend/start.sh /usr/local/bin/cyr-start
 COPY --from=web /web/dist ./static
 
 # Optional: bake the Whisper weights into the image (docker build --build-arg WHISPER_PRELOAD=base .)
@@ -54,10 +60,8 @@ USER cyr
 
 VOLUME ["/data"]
 EXPOSE 7413
-# Checks /health over HTTP or HTTPS, whichever the server runs (SSL_CERTFILE/SSL_KEYFILE).
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-  CMD ["python", "-m", "app.serve", "--check"]
+# HTTPS when TLS_CERT_FILE/TLS_KEY_FILE are set (see backend/start.sh), HTTP otherwise.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:7413/health || curl -fsSk https://127.0.0.1:7413/health || exit 1
 
-# HTTPS directly: mount the certificate and set SSL_CERTFILE and SSL_KEYFILE. Behind Caddy/nginx/Traefik,
-# leave them unset; X-Forwarded-* headers are trusted (FORWARDED_ALLOW_IPS). Refuses to start on a bad TLS setup.
-CMD ["python", "-m", "app.serve"]
+CMD ["cyr-start"]

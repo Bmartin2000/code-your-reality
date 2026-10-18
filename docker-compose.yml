@@ -2,7 +2,7 @@
 #
 #   cp .env.example .env        # set OLLAMA_URL / OLLAMA_API_KEY / OLLAMA_MODEL, BASIC_AUTH_*
 #   docker compose up -d --build
-#   curl http://localhost:7413/health     (https://… when SSL_CERTFILE/SSL_KEYFILE are set)
+#   curl http://localhost:7413/health
 #
 # With a local Ollama container instead of Ollama Cloud:
 #   OLLAMA_URL=http://ollama:11434 docker compose --profile local-ollama up -d --build
@@ -22,9 +22,6 @@ services:
     volumes:
       - cyr-data:/data # database, uploads and frames (survives rebuilds)
       - cyr-models:/app/hf-cache # faster-whisper weights, downloaded on first use
-      # HTTPS without a proxy: mount the certificate and set SSL_CERTFILE=/certs/fullchain.pem and
-      # SSL_KEYFILE=/certs/privkey.pem in .env.
-      # - ./certs:/certs:ro
     restart: unless-stopped
 
   ollama:

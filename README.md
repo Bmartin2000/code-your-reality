@@ -181,7 +181,7 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m app.serve        # http://127.0.0.1:7413 (python -m uvicorn app.main:app --port 7413 works too)
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 7413
 ```
 
 ```powershell

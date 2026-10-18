@@ -5,23 +5,33 @@ from __future__ import annotations
 import shutil
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..db import AuditEvent, GeneratedApp, Job, MediaAsset, Project, WorkflowVersion, get_session, utcnow
+from ..db import AuditEvent, GeneratedApp, Job, MediaAsset, Project, User, WorkflowVersion, get_session, utcnow
 from ..pipeline.media import ALLOWED_EXTENSIONS, safe_extension, sniff_container
-from ..services import access, jobs, plans
-from ..services.auth import require_user
+from ..services import access, jobs, plans, signing
+from ..services.auth import current_user_optional, require_user
 from ..services.audit import record_audit, review_diff
 from ..workflow.sample import SAMPLE_SCENES, SAMPLE_TRANSCRIPT, SAMPLE_NARRATION_TITLE, blank_definition, rental_definition
 from ..workflow.schema import WorkflowDefinition
 from ..workflow.validation import review_summary, validate
 
 router = APIRouter(prefix="/api", dependencies=[Depends(require_user)])
+
+
+def media_access(request: Request, user: User | None = Depends(current_user_optional)) -> None:
+    """Media files open for a signed-in user, or with a valid signed URL (<video>/<img> send no headers)."""
+    if user or signing.verify(request.url.path, request.query_params.get("exp"), request.query_params.get("sig")):
+        return
+    raise HTTPException(401, {"message": "Please sign in.", "auth_required": True})
+
+
+media_router = APIRouter(prefix="/api", dependencies=[Depends(media_access)])
 
 
 # --- serialization -------------------------------------------------------------------------------
@@ -41,8 +51,8 @@ def _media_dict(a: MediaAsset) -> dict[str, Any]:
         "has_audio": a.has_audio,
         "transcript": a.transcript or [],
         "transcript_source": a.transcript_source,
-        "frames": [{"index": f["index"], "time": f["time"], "url": f"/api/media/{a.id}/frames/{f['index']}"} for f in (a.frames or [])],
-        "url": f"/api/media/{a.id}/file",
+        "frames": [{"index": f["index"], "time": f["time"], "url": signing.sign(f"/api/media/{a.id}/frames/{f['index']}")} for f in (a.frames or [])],
+        "url": signing.sign(f"/api/media/{a.id}/file"),
         "created_at": a.created_at.isoformat(),
     }
 
@@ -311,7 +321,7 @@ def _get_media(s: Session, media_id: str) -> MediaAsset:
     return m
 
 
-@router.get("/media/{media_id}/file")
+@media_router.get("/media/{media_id}/file")
 def media_file(media_id: str, s: Session = Depends(get_session)) -> FileResponse:
     m = _get_media(s, media_id)
     path = get_settings().uploads_dir / m.project_id / m.stored_name
@@ -320,7 +330,7 @@ def media_file(media_id: str, s: Session = Depends(get_session)) -> FileResponse
     return FileResponse(path, media_type=m.content_type)
 
 
-@router.get("/media/{media_id}/frames/{index}")
+@media_router.get("/media/{media_id}/frames/{index}")
 def media_frame(media_id: str, index: int, s: Session = Depends(get_session)) -> FileResponse:
     m = _get_media(s, media_id)
     frame = next((f for f in (m.frames or []) if f["index"] == index), None)

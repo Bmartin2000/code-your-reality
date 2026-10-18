@@ -1,7 +1,8 @@
 """Simple sign-in for the Studio, using only the standard library.
 
 - Passwords: PBKDF2-HMAC-SHA256 with a random salt (hashlib), compared in constant time.
-- Sessions: a random token in an HttpOnly, SameSite=Lax cookie; the database stores only its hash.
+- Sessions: a random token, sent as `Authorization: Bearer <token>` by frontends on any origin, or as an
+  HttpOnly, SameSite=Lax cookie when the frontend is served by the API itself. The database stores only its hash.
 - The first user ever registered becomes admin. Admins can add and remove users.
 """
 
@@ -17,6 +18,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, Response
+from starlette.requests import HTTPConnection
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -61,33 +63,36 @@ def public_user(u: User) -> dict:
     return {"id": u.id, "email": u.email, "name": u.name, "role": u.role, "created_at": u.created_at.isoformat()}
 
 
-def start_session(s: Session, user: User, request: Request, response: Response) -> None:
+def session_token(conn: HTTPConnection) -> str | None:
+    """The session token from `Authorization: Bearer`, or else from the session cookie."""
+    header = conn.headers.get("authorization", "")
+    if header[:7].lower() == "bearer " and header[7:].strip():
+        return header[7:].strip()
+    return conn.cookies.get(COOKIE)
+
+
+def start_session(s: Session, user: User, request: Request, response: Response) -> str:
+    """Creates a session and returns its token (for bearer use); it is also set as the session cookie."""
     token = secrets.token_urlsafe(32)
     s.add(AuthSession(token_hash=_token_hash(token), user_id=user.id, expires_at=datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)))
     s.commit()
-    response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, **cookie_attrs(request))
-
-
-def cookie_attrs(request: Request) -> dict:
-    """HttpOnly always. SameSite from COOKIE_SAMESITE; None (frontend on another site) is always Secure."""
-    s = get_settings()
-    secure = s.cookie_secure or request.url.scheme == "https" or s.cookie_samesite == "none"
-    return {"httponly": True, "samesite": s.cookie_samesite, "secure": secure, "path": "/", "domain": s.cookie_domain or None}
+    secure = get_settings().cookie_secure or request.url.scheme == "https"
+    response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=secure, path="/")
+    return token
 
 
 def end_session(s: Session, request: Request, response: Response) -> None:
-    token = request.cookies.get(COOKIE)
+    token = session_token(request)
     if token:
         row = s.get(AuthSession, _token_hash(token))
         if row:
             s.delete(row)
             s.commit()
-    attrs = cookie_attrs(request)
-    response.delete_cookie(COOKIE, path="/", domain=attrs["domain"], secure=attrs["secure"], httponly=True, samesite=attrs["samesite"])
+    response.delete_cookie(COOKIE, path="/")
 
 
 def current_user_optional(request: Request, s: Session = Depends(get_session)) -> User | None:
-    token = request.cookies.get(COOKIE)
+    token = session_token(request)
     if not token:
         return None
     row = s.get(AuthSession, _token_hash(token))
@@ -156,7 +161,7 @@ def set_test_plan(s: Session, user: User, plan: str | None) -> None:
 
 
 def test_plan_for_token(token: str) -> str | None:
-    """The test plan for a session cookie: set only for the Super Admin, None for everyone else."""
+    """The test plan for a session token: set only for the Super Admin, None for everyone else."""
     with SessionLocal() as s:
         row = s.get(AuthSession, _token_hash(token))
         if not row or row.expires_at < datetime.now(timezone.utc):

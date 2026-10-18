@@ -27,8 +27,8 @@ import type {
   RecordEvent,
   TranscriptSegment,
 } from './types'
+import { apiUrl } from './base'
 import type { WorkflowDefinition } from './workflow-schema'
-import { apiUrl } from './config'
 
 export interface ApiErrorBody {
   message: string
@@ -87,6 +87,24 @@ export function fieldErrors(err: unknown): Record<string, string> | null {
   return Object.keys(out).length ? out : null
 }
 
+/** The Studio session token, sent as a bearer header (the API may be on another origin). */
+export function sessionToken(): string | null {
+  try {
+    return localStorage.getItem('cyr.session')
+  } catch {
+    return null
+  }
+}
+
+export function setSessionToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem('cyr.session', token)
+    else localStorage.removeItem('cyr.session')
+  } catch {
+    /* storage unavailable: the session lasts until the page is reloaded */
+  }
+}
+
 /** Personal access keys for private (team) apps, remembered per app in this browser. */
 export function appKey(slug: string): string | null {
   try {
@@ -111,7 +129,25 @@ function headersFor(path: string, body: unknown): Record<string, string> {
   const m = path.match(/^\/api\/apps\/([^/?]+)/)
   const key = m ? appKey(m[1]) : null
   if (key) h['X-App-Key'] = key
+  const token = sessionToken()
+  if (token) h.Authorization = `Bearer ${token}`
   return h
+}
+
+interface AuthResult {
+  user: AuthUser
+  token: string
+}
+
+function keepSession(r: AuthResult): { user: AuthUser } {
+  setSessionToken(r.token)
+  return { user: r.user }
+}
+
+/** ?key= for links that can't send headers (downloads), URL-encoded. */
+function keyQuery(slug: string, sep = '?'): string {
+  const key = appKey(slug)
+  return key ? `${sep}key=${encodeURIComponent(key)}` : ''
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -119,7 +155,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     res = await fetch(apiUrl(path), {
       method,
-      credentials: 'include', // the session cookie, also when the API is on another host
       headers: headersFor(path, body),
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     })
@@ -136,6 +171,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   if (!res.ok) {
     const err = (json as { error?: ApiErrorBody } | null)?.error
+    if (res.status === 401 && err?.auth_required) setSessionToken(null)
     const fallback =
       res.status === 502 || res.status === 503 || res.status === 504
         ? 'The backend is not responding. Start it and try again.'
@@ -145,12 +181,26 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return json as T
 }
 
+/** Downloads a file that needs the Studio session (links can't send the bearer header). */
+async function downloadWithAuth(path: string, filename: string): Promise<void> {
+  const token = sessionToken()
+  const res = await fetch(apiUrl(path), { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) throw new ApiError(res.status, { message: `Download failed (${res.status}).` })
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 /** Upload with progress reporting (fetch has no upload progress). */
 function upload(path: string, file: File, onProgress: (fraction: number) => void, signal?: AbortSignal): Promise<ProjectDetail> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', apiUrl(path))
-    xhr.withCredentials = true
+    const token = sessionToken()
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total)
     }
@@ -175,9 +225,9 @@ function upload(path: string, file: File, onProgress: (fraction: number) => void
 
 export const api = {
   me: () => request<AuthState>('GET', '/api/auth/me'),
-  login: (email: string, password: string) => request<{ user: AuthUser }>('POST', '/api/auth/login', { email, password }),
-  register: (name: string, email: string, password: string) => request<{ user: AuthUser }>('POST', '/api/auth/register', { name, email, password }),
-  logout: () => request<{ status: string }>('POST', '/api/auth/logout'),
+  login: (email: string, password: string) => request<AuthResult>('POST', '/api/auth/login', { email, password }).then(keepSession),
+  register: (name: string, email: string, password: string) => request<AuthResult>('POST', '/api/auth/register', { name, email, password }).then(keepSession),
+  logout: () => request<{ status: string }>('POST', '/api/auth/logout').finally(() => setSessionToken(null)),
   users: () => request<AuthUser[]>('GET', '/api/users'),
   createUser: (body: { name: string; email: string; password: string; role: 'admin' | 'user' }) => request<AuthUser>('POST', '/api/users', body),
   setUserRole: (id: string, role: 'admin' | 'user') => request<AuthUser>('PATCH', `/api/users/${id}`, { role }),
@@ -230,14 +280,8 @@ export const api = {
   customizeApp: (slug: string, body: { name?: string; sections: Record<string, { label?: string; plural_label?: string; color?: SectionColor; fields?: Record<string, string>; states?: Record<string, string>; transitions?: Record<string, string> }> }) =>
     request<{ manifest: Manifest; name: string }>('PUT', `/api/apps/${slug}/customize`, body),
   seedSample: (slug: string) => request<{ created: Record<string, number> }>('POST', `/api/apps/${slug}/seed-sample`),
-  exportUrl: (slug: string) => {
-    const key = appKey(slug)
-    return apiUrl(`/api/apps/${slug}/export${key ? `?key=${key}` : ''}`)
-  },
-  csvUrl: (path: string, slug: string) => {
-    const key = appKey(slug)
-    return apiUrl(`${path}${key ? `?key=${key}` : ''}`)
-  },
+  exportUrl: (slug: string) => apiUrl(`/api/apps/${slug}/export${keyQuery(slug)}`),
+  csvUrl: (path: string, slug: string) => apiUrl(`${path}${keyQuery(slug, path.includes('?') ? '&' : '?')}`),
   reports: (slug: string) => request<AppReports>('GET', `/api/apps/${slug}/reports`),
   integrations: (slug: string) => request<AppIntegrations>('GET', `/api/apps/${slug}/integrations`),
   addWebhook: (slug: string, url: string) => request<{ id: string; secret: string }>('POST', `/api/apps/${slug}/webhooks`, { url }),
@@ -258,7 +302,8 @@ export const api = {
     request<BillingInfo>('PUT', '/api/account/billing', body),
   issueSubscriptionInvoice: (id: string) => request<InvoiceInfo>('POST', `/api/account/invoices/${id}/issue`),
   toggleSubscriptionInvoicePaid: (id: string) => request<InvoiceInfo>('POST', `/api/account/invoices/${id}/paid`),
-  subscriptionInvoicePdf: (id: string) => apiUrl(`/api/account/invoices/${id}/pdf`),
+  /** Studio-session download: fetched with the bearer header and handed to the browser as a file. */
+  downloadSubscriptionInvoicePdf: (id: string, filename: string) => downloadWithAuth(`/api/account/invoices/${id}/pdf`, filename),
   platformInvoicing: () => request<InvoicingConfig>('GET', '/api/admin/invoicing'),
   setPlatformInvoicing: (body: InvoicingSettingsBody) => request<InvoicingConfig>('PUT', '/api/admin/invoicing', body),
 
@@ -273,10 +318,7 @@ export const api = {
   issueAppInvoice: (slug: string, id: string) => request<InvoiceInfo>('POST', `/api/apps/${slug}/invoices/${id}/issue`),
   toggleAppInvoicePaid: (slug: string, id: string) => request<InvoiceInfo>('POST', `/api/apps/${slug}/invoices/${id}/paid`),
   deleteAppInvoice: (slug: string, id: string) => request<void>('DELETE', `/api/apps/${slug}/invoices/${id}`),
-  appInvoicePdf: (slug: string, id: string) => {
-    const key = appKey(slug)
-    return apiUrl(`/api/apps/${slug}/invoices/${id}/pdf${key ? `?key=${key}` : ''}`)
-  },
+  appInvoicePdf: (slug: string, id: string) => apiUrl(`/api/apps/${slug}/invoices/${id}/pdf${keyQuery(slug)}`),
   appInvoicing: (slug: string) => request<InvoicingConfig>('GET', `/api/apps/${slug}/invoicing`),
   setAppInvoicing: (slug: string, body: InvoicingSettingsBody) => request<InvoicingConfig>('PUT', `/api/apps/${slug}/invoicing`, body),
   resetApp: (slug: string) => request<{ deleted: number }>('POST', `/api/apps/${slug}/reset`),

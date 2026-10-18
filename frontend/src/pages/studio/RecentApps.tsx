@@ -8,7 +8,7 @@ import { api } from '../../lib/api'
 import { useAccount, useApps } from '../../lib/queries'
 import { relativeTime } from '../../lib/format'
 import { toast } from '../../lib/toast'
-import { appLink } from '../../lib/config'
+import { appPageUrl } from '../../lib/base'
 
 const WAYS = [
   { icon: MessageSquareText, title: 'Ask in one sentence', body: '“Customers should also give a phone number.” The AI prepares the change, you approve it.' },
@@ -27,7 +27,7 @@ export default function RecentApps() {
 
   const copy = async (slug: string) => {
     try {
-      await navigator.clipboard.writeText(appLink(`/apps/${slug}`))
+      await navigator.clipboard.writeText(appPageUrl(`/apps/${slug}`))
       toast.success('Link copied')
     } catch {
       toast.error('Could not copy the link')

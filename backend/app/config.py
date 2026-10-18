@@ -33,17 +33,9 @@ class Settings(BaseSettings):
     data_dir: Path = Field(BACKEND_ROOT / "data", validation_alias=env("DATA_DIR", "DATA_DIR"))
     database_url: str | None = Field(None, validation_alias=env("DATABASE_URL"))
 
-    # HTTP server (python -m app.serve). 7413 by default; TLS when both certificate files are set.
-    host: str = Field("127.0.0.1", validation_alias=env("HOST", "HOST"))
-    port: int = Field(7413, validation_alias=env("PORT", "PORT"))
-    ssl_certfile: Path | None = Field(None, validation_alias=env("SSL_CERTFILE", "SSL_CERTFILE"))
-    ssl_keyfile: Path | None = Field(None, validation_alias=env("SSL_KEYFILE", "SSL_KEYFILE"))
-    # Proxies whose X-Forwarded-Proto/For headers are trusted (when TLS ends at Caddy/nginx).
-    forwarded_allow_ips: str = Field("127.0.0.1", validation_alias=env("FORWARDED_ALLOW_IPS", "FORWARDED_ALLOW_IPS"))
-
-    # Browser origins allowed to call the API with cookies (the frontend's own origin(s), comma separated).
-    cors_origins: str = Field("http://localhost:5173,http://127.0.0.1:5173", validation_alias=env("CORS_ORIGINS", "CORS_ORIGINS"))
-    # Built frontend (Vite dist) to serve from the same origin, e.g. in the Docker image.
+    # HTTP. The API never needs to know where frontends are hosted: CORS allows any origin without
+    # credentials, and browsers authenticate with a bearer token (see services/auth.py).
+    # Built frontend (Vite dist) to serve from the same origin, e.g. in the Docker image. Unset = API only.
     frontend_dist: Path | None = Field(None, validation_alias=env("FRONTEND_DIST", "FRONTEND_DIST"))
     # Optional HTTP Basic auth for a public demo server (everything except /health).
     basic_auth_user: str | None = Field(None, validation_alias=env("BASIC_AUTH_USER", "BASIC_AUTH_USER"))
@@ -54,10 +46,6 @@ class Settings(BaseSettings):
     allow_signup: bool = Field(False, validation_alias=env("ALLOW_SIGNUP", "ALLOW_SIGNUP"))
     # Force the Secure flag on the session cookie (set it behind an HTTPS reverse proxy).
     cookie_secure: bool = Field(False, validation_alias=env("COOKIE_SECURE", "COOKIE_SECURE"))
-    # lax: frontend and API on the same site (default). none: frontend on another site than the API;
-    # browsers then require Secure, so it is always sent with Secure (HTTPS only).
-    cookie_samesite: Literal["lax", "strict", "none"] = Field("lax", validation_alias=env("COOKIE_SAMESITE", "COOKIE_SAMESITE"))
-    cookie_domain: str | None = Field(None, validation_alias=env("COOKIE_DOMAIN", "COOKIE_DOMAIN"))
 
     # Upload limits
     max_upload_mb: int = Field(200, validation_alias=env("MAX_UPLOAD_MB"))
@@ -93,27 +81,6 @@ class Settings(BaseSettings):
     @property
     def db_url(self) -> str:
         return self.database_url or f"sqlite:///{(self.data_dir / 'reality_compiler.db').as_posix()}"
-
-    @property
-    def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-
-    def tls_problems(self) -> list[str]:
-        if bool(self.ssl_certfile) != bool(self.ssl_keyfile):
-            return ["Set both SSL_CERTFILE and SSL_KEYFILE (or neither)."]
-        out = []
-        for name, path in (("SSL_CERTFILE", self.ssl_certfile), ("SSL_KEYFILE", self.ssl_keyfile)):
-            if path and not Path(path).is_file():
-                out.append(f"{name} points to {path}, which doesn't exist or isn't readable.")
-        return out
-
-    def deployment_warnings(self) -> list[str]:
-        out = []
-        if self.cookie_samesite == "none" and not (self.ssl_certfile or self.cookie_secure):
-            out.append("COOKIE_SAMESITE=none needs HTTPS: serve with SSL_CERTFILE/SSL_KEYFILE or behind an HTTPS proxy with COOKIE_SECURE=true.")
-        if "*" in self.cors_origin_list:
-            out.append("CORS_ORIGINS=* can't be used with sign-in cookies; list the frontend origin(s) instead.")
-        return out
 
     @property
     def ollama_url_normalized(self) -> str:

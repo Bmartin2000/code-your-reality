@@ -13,7 +13,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import HTTPConnection
@@ -26,7 +26,7 @@ from .pipeline.model import OllamaProvider
 from .pipeline.transcribe import whisper_installed
 from .services.jobs import mark_interrupted_jobs
 from .services import plans
-from .services.auth import COOKIE, require_user, test_plan_for_token
+from .services.auth import require_user, session_token, test_plan_for_token
 from .services.plans import ensure_account
 from .workflow.runtime import RuntimeErrorBase
 
@@ -43,39 +43,16 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Code Your Reality API", version="1.0.0", lifespan=lifespan)
 settings = get_settings()
-# Cross-origin frontends (frontend and API on different hosts) send the session cookie, so CORS
-# allows credentials for the configured origins only.
+# Frontends may be hosted on any origin. Requests authenticate with a header (bearer token or app key),
+# never an ambient credential, so any origin may call the API and allow_credentials stays off.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o for o in settings.cors_origin_list if o != "*"],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "X-App-Key"],
+    allow_headers=["Authorization", "Content-Type", "X-App-Key"],
+    expose_headers=["Content-Disposition"],
     max_age=600,
 )
-
-_UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
-
-
-class OriginCheckMiddleware:
-    """CSRF protection for cookie sessions: a state-changing API request that carries an Origin header
-    must come from this server's own origin or a configured CORS origin. Needed once cookies are
-    SameSite=None (frontend on another site), because then any site could make the browser send them."""
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["method"] in _UNSAFE and scope["path"].startswith("/api/"):
-            headers = dict(scope["headers"])
-            origin = headers.get(b"origin", b"").decode("latin-1").rstrip("/")
-            if origin and origin != "null":
-                host = headers.get(b"host", b"").decode("latin-1")
-                same = origin.split("://", 1)[-1] == host
-                if not same and origin not in settings.cors_origin_list:
-                    response = JSONResponse(status_code=403, content={"error": {"message": "This origin isn't allowed to change data here. Add it to CORS_ORIGINS on the server."}})
-                    return await response(scope, receive, send)
-        return await self.app(scope, receive, send)
 
 
 class ETagMiddleware:
@@ -120,7 +97,6 @@ class ETagMiddleware:
 
 
 app.add_middleware(ETagMiddleware)
-app.add_middleware(OriginCheckMiddleware)
 
 
 # Optional HTTP Basic auth for a public demo server. /health stays open for load balancers.
@@ -129,7 +105,7 @@ if settings.basic_auth_user and settings.basic_auth_password:
 
     @app.middleware("http")
     async def basic_auth(request: Request, call_next):
-        if request.url.path == "/health":
+        if request.url.path == "/health" or request.method == "OPTIONS":  # CORS preflights carry no credentials
             return await call_next(request)
         header = request.headers.get("authorization", "")
         if not (header.startswith("Basic ") and hmac.compare_digest(header[6:], _expected)):
@@ -146,7 +122,7 @@ class TestPlanMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and scope["path"].startswith("/api/"):
-            token = HTTPConnection(scope).cookies.get(COOKIE)
+            token = session_token(HTTPConnection(scope))
             plan = await run_in_threadpool(test_plan_for_token, token) if token else None
             if plan:
                 reset = plans.TEST_PLAN.set(plan)
@@ -205,6 +181,7 @@ def capabilities(refresh: bool = False) -> dict[str, Any]:
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(projects.media_router)
 app.include_router(apps.router)
 app.include_router(account.router)
 
@@ -215,13 +192,16 @@ _dist = settings.frontend_dist
 if _dist and (Path(_dist) / "index.html").is_file():
     _dist = Path(_dist).resolve()
     app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
+    # The build uses relative asset paths (base './') so it also runs from a subfolder. Served from here,
+    # deep links like /studio/projects/1 need <base href="/"> to resolve ./assets against the root.
+    _index_html = (_dist / "index.html").read_text(encoding="utf-8").replace("<head>", '<head><base href="/">', 1)
 
     @app.get("/{path:path}", include_in_schema=False)
-    def spa(path: str) -> FileResponse:
+    def spa(path: str) -> Response:
         if path.startswith("api/"):
             raise HTTPException(404, "Not found.")
         candidate = (_dist / path).resolve()
         if path and candidate.is_file() and candidate.is_relative_to(_dist):
             return FileResponse(candidate)
-        return FileResponse(_dist / "index.html")  # client-side routes (/studio, /apps/...)
+        return HTMLResponse(_index_html)  # client-side routes (/studio, /apps/...)
 
