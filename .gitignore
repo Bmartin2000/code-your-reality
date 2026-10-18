@@ -26,3 +26,18 @@ Thumbs.db
 
 # Local tool config (machine-specific paths)
 .claude/
+
+# Launch film: large media stays out of git (docs, prompts and scripts are versioned)
+video-production/footage/
+video-production/references/*.png
+video-production/references/*.jpg
+video-production/references/*.webp
+video-production/audio/*.mp3
+video-production/audio/*.wav
+video-production/edit/build/
+video-production/exports/
+video-production/recorder/
+video-production/.venv/
+video-production/audio/vo/
+video-production/brand/*.png
+video-production/references/*.jpg
