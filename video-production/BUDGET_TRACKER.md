@@ -6,8 +6,8 @@
 | **Authorized project budget** | **300** (approved by the user, 2026-10-18) |
 | Automatic spending ceiling (70%) | **210** |
 | Protected reserve (30%, needs approval) | **90** |
-| Spent to date | **185.10, verified** (balance 793.28 → 608.18; the line items below sum to ≈182.1, so ≈3 credits are unattributed, likely rounding in the audio/image estimates) |
-| Estimated cost to complete | 0: main film finished. Remaining under the ceiling: 24.90; reserve 90 untouched |
+| Spent to date | **188.10, verified** (balance 793.28 → 605.18; re-cut 2 added 3.00, narration lines only) |
+| Estimated cost to complete | 0. Remaining under the ceiling: 21.90; reserve 90 untouched |
 
 **Split of the spendable part:**
 - references and pilot: 10%
@@ -34,3 +34,4 @@
 | 2026-10-18 17:44 | VO lines, "Fraser" voice (user's choice, 12 takes) | text2speech_v2 elevenlabs | 1 | ≈1.80 | ≈172.35 | final narration |
 | 2026-10-18 17:50 | SF17b (matched end frame for the morph) | gpt_image_2_5 medium 2k | 1 | 1.00 | ≈173.35 | |
 | 2026-10-18 17:51 | G16 morph retry (matched start/end frames) | kling3_0 pro silent | 2 | 8.75 | ≈182.10 | the 1st take popped the logo in with a cut |
+| 2026-10-18 18:12 | VO lines 21–29, Fraser voice (re-cut: feature explanations) | text2speech_v2 elevenlabs | 1 | ≈1.35 | ≈186.45 | |

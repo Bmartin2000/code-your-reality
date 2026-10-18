@@ -29,7 +29,8 @@ UI_W, UI_H = 1600, 900  # the app recording on the stage
 UI_Y = 168
 # Source crops (x, y, w, h) of the 1920x1080 recordings: Studio pages have a centred column, so they
 # are magnified; app pages use the full layout.
-CROPS = {"studio": (320, 0, 1280, 720), "app": (160, 0, 1600, 900)}
+CROPS = {"studio": (320, 0, 1280, 720), "app": (160, 0, 1600, 900), "full": (0, 0, 1920, 1080)}
+FONT_MONO = r"C:\Windows\Fonts\consola.ttf"
 GRADE = "eq=contrast=1.04:saturation=1.03:gamma=0.98,vignette=angle=PI/5"
 ENC = ["-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", "-r", str(FPS)]
 
@@ -116,6 +117,90 @@ def end_card(path: Path) -> None:
     canvas.save(path)
 
 
+# --- zoom keyframes ------------------------------------------------------------------------------------
+
+
+def focus_filter(focus: list, crop: tuple, out_w: int, out_h: int, up: int = 2) -> str:
+    """zoompan expressions for eased zooms onto details of a recording.
+
+    focus: [(t, cx, cy, z), ...] in seconds and source (1920x1080) pixels; z=1 shows the whole crop.
+    """
+    cx0, cy0, cw, ch = crop
+    keys = [(int(round(tk * FPS)), (x - cx0) * up, (y - cy0) * up, z) for tk, x, y, z in focus]
+
+    def piece(idx: int) -> str:
+        return "{0}"  # placeholder
+
+    def expr(i: int) -> str:
+        # returns expression for value index i (1: X, 2: Y, 3: z)
+        e = str(keys[-1][i])
+        for (f0, *v0), (f1, *v1) in reversed(list(zip(keys, keys[1:]))):
+            a, b = v0[i - 1], v1[i - 1]
+            s = f"clip((on-{f0})/{max(1, f1 - f0)},0,1)"
+            seg = f"({a}+({b}-({a}))*({s})*({s})*(3-2*({s})))"
+            e = f"if(lt(on,{f1}),{seg},{e})"
+        return f"if(lt(on,{keys[0][0]}),{keys[0][i]},{e})"
+
+    z, X, Y = expr(3), expr(1), expr(2)
+    return (
+        f"scale={cw * up}:{ch * up}:flags=lanczos,"
+        f"zoompan=z='{z}':x='clip(({X})-iw/zoom/2,0,iw-iw/zoom)':y='clip(({Y})-ih/zoom/2,0,ih-ih/zoom)':d=1:s={out_w}x{out_h}:fps={FPS}"
+    )
+
+
+# --- recording HUD (mirrors the app's own recorder: red REC counter + "Stop recording") ----------------
+
+
+def render_hud(seg: dict, out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    hud = seg["hud"]
+    dur = seg["dur"]
+    fps_n = int(dur * FPS)
+    mono = ImageFont.truetype(FONT_MONO, 30)
+    sans = ImageFont.truetype(FONT_SB, 26)
+    small = ImageFont.truetype(FONT_RG, 22)
+    for n in range(fps_n):
+        tt = n / FPS
+        a = min(1.0, max(0.0, (tt - hud.get("fade_in_at", 0.2)) / 0.6))
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        if a > 0:
+            d = ImageDraw.Draw(img)
+            al = int(255 * a)
+            # viewfinder corners
+            L, M = 70, 48
+            for (x, y, dx, dy) in ((M, M, 1, 1), (W - M, M, -1, 1), (M, H - M, 1, -1), (W - M, H - M, -1, -1)):
+                d.line([(x, y), (x + dx * L, y)], fill=(255, 255, 255, int(170 * a)), width=4)
+                d.line([(x, y), (x, y + dy * L)], fill=(255, 255, 255, int(170 * a)), width=4)
+            # top-left: app + camera
+            d.rounded_rectangle((80, 74, 520, 128), radius=27, fill=(10, 14, 22, int(150 * a)))
+            cx, cy = 112, 101  # camera glyph
+            d.rounded_rectangle((cx - 16, cy - 10, cx + 16, cy + 12), radius=5, outline=(255, 255, 255, al), width=3)
+            d.rectangle((cx - 6, cy - 15, cx + 6, cy - 10), fill=(255, 255, 255, al))
+            d.ellipse((cx - 6, cy - 5, cx + 6, cy + 7), outline=(255, 255, 255, al), width=3)
+            d.text((142, 86), "Code Your Reality · Camera", font=small, fill=(255, 255, 255, al))
+            # bottom bar: REC counter + Stop recording (same wording as the app)
+            secs = int(hud["timer_start"] + tt)
+            rec = f"REC {secs // 60}:{secs % 60:02d} / 5:00"
+            bw = 640
+            x0, y0 = (W - bw) // 2, H - 150
+            d.rounded_rectangle((x0, y0, x0 + bw, y0 + 76), radius=38, fill=(10, 14, 22, int(170 * a)))
+            pulse = 0.55 + 0.45 * abs(((tt * 1.2) % 2) - 1)
+            d.ellipse((x0 + 30, y0 + 28, x0 + 50, y0 + 48), fill=(232, 72, 85, int(al * pulse)))
+            d.text((x0 + 64, y0 + 20), rec, font=mono, fill=(255, 120, 130, al))
+            pressed = hud.get("stop_at") is not None and tt >= hud["stop_at"]
+            bx0, bx1 = x0 + bw - 248, x0 + bw - 18
+            col = (170, 30, 45, al) if pressed else (217, 58, 74, al)
+            d.rounded_rectangle((bx0, y0 + 12, bx1, y0 + 64), radius=26, fill=col, outline=(255, 255, 255, al if pressed else 0), width=3)
+            d.rectangle((bx0 + 22, y0 + 31, bx0 + 36, y0 + 45), fill=(255, 255, 255, al))
+            d.text((bx0 + 48, y0 + 22), "Stop recording", font=sans, fill=(255, 255, 255, al))
+            if pressed:  # brief white flash as the recording is sent
+                k = tt - hud["stop_at"]
+                if 0.25 < k < 0.55:
+                    fl = int(255 * (1 - abs(k - 0.4) / 0.15) * 0.8)
+                    img.alpha_composite(Image.new("RGBA", (W, H), (255, 255, 255, max(0, fl))))
+        img.save(out_dir / f"h{n:04d}.png")
+
+
 # --- segments ----------------------------------------------------------------------------------------
 
 
@@ -130,23 +215,34 @@ def fades(seg: dict, dur: float) -> str:
 
 def render_gen(seg: dict, out: Path) -> None:
     dur = seg["dur"]
-    vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},{GRADE},trim=0:{dur},setpts=PTS-STARTPTS{fades(seg, dur)}"
-    run(["-i", str(ROOT / seg["src"]), "-an", "-vf", vf, "-t", str(dur), *ENC, str(out)])
+    base = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},{GRADE},trim=0:{dur},setpts=PTS-STARTPTS"
+    if not seg.get("hud"):
+        run(["-i", str(ROOT / seg["src"]), "-an", "-vf", base + fades(seg, dur), "-t", str(dur), *ENC, str(out)])
+        return
+    hud_dir = BUILD / f"hud_{seg['id']}"
+    render_hud(seg, hud_dir)
+    fc = f"[0:v]{base}[b];[1:v]format=rgba[h];[b][h]overlay=0:0:shortest=1{fades(seg, dur)}[v]"
+    run(["-i", str(ROOT / seg["src"]), "-framerate", str(FPS), "-i", str(hud_dir / "h%04d.png"), "-filter_complex", fc, "-map", "[v]", "-an", "-t", str(dur), *ENC, str(out)])
 
 
 def render_ui(seg: dict, out: Path, art: dict[str, Path]) -> None:
     dur = seg["dur"]
     sid = seg["id"]
     txt = BUILD / f"txt_{sid}.png"
-    text_layer(txt, seg["super"], seg.get("sub", ""))
+    if seg.get("stage") is not False:
+        text_layer(txt, seg.get("super", ""), seg.get("sub", ""))
     x, y = (W - UI_W) // 2, UI_Y
-    cx, cy, cw, ch = CROPS[seg.get("crop", "app")]
+    crop = CROPS[seg.get("crop", "full" if seg.get("focus") else "app")]
+    cx, cy, cw, ch = crop
+    if seg.get("stage") is False:
+        return render_ui_full(seg, out, crop)
     parts = seg.get("parts") or [(seg["in"], dur)]
     inputs: list[str] = ["-loop", "1", "-t", str(dur), "-i", str(art["bg"]), "-loop", "1", "-t", str(dur), "-i", str(art["shadow"]), "-loop", "1", "-t", str(dur), "-i", str(art["mask"]), "-loop", "1", "-t", str(dur), "-i", str(txt)]
     chains = []
     for k, (start, length) in enumerate(parts):
         inputs += ["-ss", str(start), "-t", str(length), "-i", str(ROOT / seg["src"])]
-        chains.append(f"[{4 + k}:v]fps={FPS},crop={cw}:{ch}:{cx}:{cy},scale={UI_W}:{UI_H}:flags=lanczos,setsar=1,setpts=PTS-STARTPTS,format=rgba[p{k}]")
+        size = f"scale={UI_W}:{UI_H}:flags=lanczos" if not seg.get("focus") else focus_filter(seg["focus"], crop, UI_W, UI_H)
+        chains.append(f"[{4 + k}:v]fps={FPS},setpts=PTS-STARTPTS,crop={cw}:{ch}:{cx}:{cy},{size},setsar=1,format=rgba[p{k}]")
     if len(parts) > 1:
         chains.append("".join(f"[p{k}]" for k in range(len(parts))) + f"concat=n={len(parts)}:v=1:a=0[ui]")
     else:
@@ -163,6 +259,15 @@ def render_ui(seg: dict, out: Path, art: dict[str, Path]) -> None:
         f"[z][t]overlay=0:0:shortest=1,trim=0:{dur},setpts=PTS-STARTPTS{fades(seg, dur)}[v]",
     ]
     run([*inputs, "-filter_complex", ";".join(chains), "-map", "[v]", "-an", "-t", str(dur), *ENC, str(out)])
+
+
+def render_ui_full(seg: dict, out: Path, crop: tuple) -> None:
+    """A recording shown full-frame (no stage), e.g. zoomed into the live camera preview."""
+    dur = seg["dur"]
+    cx, cy, cw, ch = crop
+    size = focus_filter(seg["focus"], crop, W, H) if seg.get("focus") else f"scale={W}:{H}:flags=lanczos"
+    vf = f"fps={FPS},setpts=PTS-STARTPTS,crop={cw}:{ch}:{cx}:{cy},{size},setsar=1,trim=0:{dur},setpts=PTS-STARTPTS{fades(seg, dur)}"
+    run(["-ss", str(seg["in"]), "-t", str(dur + 0.5), "-i", str(ROOT / seg["src"]), "-an", "-vf", vf, "-t", str(dur), *ENC, str(out)])
 
 
 def render_still(img: Path, seg: dict, out: Path, zoom: float = 0.06) -> None:
@@ -217,6 +322,15 @@ def write_srt(path: Path) -> None:
         11: "With Plus: reports, calendar and webhook connections, team roles and invoicing.\nAnd you're never on your own.",
         13: "Same company. Same people. Finally connected.",
         14: "Code Your Reality. Your processes. Your software.",
+        21: "It listens to what you say, and looks at what you show.",
+        22: "Then it lays out what it understood: what you keep track of,\nhow work moves along, and the rules you follow. Each with the moment you said it.",
+        23: "You keep what's right, and leave out what isn't.\nNothing goes live without your OK.",
+        24: "One click, and your app is ready.\nOpen it, share the link, or download everything.",
+        25: "And your rules actually hold. Try to lend the same drill twice,\nand the system says no, and tells you why.",
+        26: "When something changes, just say it in one sentence, or record again.\nYou approve every change.",
+        27: "Call everything what your team calls it.",
+        28: "With Plus, it becomes your team's system: reports, calendar and webhook connections,\nroles for every colleague, and invoices straight from a record.",
+        29: "Build more apps as you grow.\nAnd real people at Integrint help you along the way.",
     }
 
     def ts(t: float) -> str:

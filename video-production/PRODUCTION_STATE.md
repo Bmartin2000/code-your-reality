@@ -2,6 +2,14 @@
 
 **Phase:** 5, main film delivered: exports/CodeYourReality_LaunchFilm_1080p.mp4 (2:24, 1920×1080, 24 fps, AAC 48 kHz, −16 LUFS) + .en.srt + a subtitled MP4.
 
+## Re-cut 2 (user feedback, 2026-10-18)
+- **Request:** at ~1:00 the recording UI should fade in over the owner's shot, the video gets sent, and the real app takes over, so the film itself turns out to be the recording. The product part should explain more.
+- **Done:**
+  - **G12:** gets the app's own recorder overlay (REC counter = film time, "Stop recording", flash).
+  - **R1–R3:** real clip 10, recorded with the film's G12 shot as the browser's fake camera. It zooms out of the live preview, the recording stops, Create my app, then the real analysis stages.
+  - **Product:** 15 beats (B01–B15) with eased zooms on the details and 9 new narration lines (21–29).
+  - **Length:** ≈ 3:00.
+
 ## Decisions (user, 2026-10-18)
 - **Budget:** 300 credits; automatic ceiling 210; 90 in reserve. Spent 185.10, verified (see BUDGET_TRACKER.md).
 - **Logo:** the supplied camera-aperture logo (brand/), no "ERM SYSTEM".
